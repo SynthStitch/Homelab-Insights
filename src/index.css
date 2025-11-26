@@ -1,0 +1,112 @@
+:root {
+  font-family: "Inter", system-ui, -apple-system, Segoe UI, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #e3e8f5;
+  background-color: #11131c;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #11131c;
+  position: relative;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+}
+
+.bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body.wireframe-static-bg {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(37, 99, 235, 0.18), transparent 46%),
+    radial-gradient(circle at 82% 12%, rgba(14, 165, 233, 0.12), transparent 42%),
+    #050713;
+}
+
+body.wireframe-static-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(148, 163, 184, 0.08), rgba(15, 23, 42, 0)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(96, 165, 250, 0.08),
+      rgba(96, 165, 250, 0.08) 1px,
+      transparent 1px,
+      transparent 28px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(15, 118, 110, 0.05),
+      rgba(15, 118, 110, 0.05) 1px,
+      transparent 1px,
+      transparent 32px
+    );
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: -2;
+}
+
+body.wireframe-static-bg::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 120%,
+    rgba(59, 130, 246, 0.2),
+    rgba(5, 7, 19, 0) 60%
+  );
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: -3;
+}
+
+.tilt-container {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  perspective: 1000px;
+}
+
+.tilt-inner {
+  width: 100%;
+  transition: transform 0.35s ease;
+  transform-style: preserve-3d;
+}
+
+.tilt-body {
+  width: 100%;
+  transform-style: preserve-3d;
+}
+
+.tilt-item {
+  display: block;
+  will-change: transform;
+  transition: transform 0.25s ease;
+}

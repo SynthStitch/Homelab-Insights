@@ -1,0 +1,96 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  color: #edf1ff;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.app-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem clamp(1rem, 4vw, 2rem);
+  background: rgba(4, 7, 14, 0.55);
+  border-top: 1px solid rgba(248, 250, 252, 0.4);
+  border-bottom: 1px solid rgba(248, 250, 252, 0.15);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #facc15;
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.nav-links a {
+  color: #e8ecf9;
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.7rem;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  border: 1px solid transparent;
+}
+
+.nav-links a:hover,
+.nav-links a:focus-visible {
+  background: rgba(94, 234, 212, 0.08);
+  border-color: rgba(94, 234, 212, 0.2);
+  color: #bbf7d0;
+}
+
+.nav-links .nav-button {
+  background: rgba(94, 234, 212, 0.12);
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  border-radius: 999px;
+  color: #e0f2fe;
+  font-size: 0.9rem;
+  padding: 0.4rem 1.1rem;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.nav-links .nav-button:hover,
+.nav-links .nav-button:focus-visible {
+  background: rgba(94, 234, 212, 0.28);
+  border-color: rgba(94, 234, 212, 0.5);
+  color: #0e7490;
+}
+
+.app-content {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+}
+
+.wavy-container {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.wavy-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.wavy-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100vh;
+}
