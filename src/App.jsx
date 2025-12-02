@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import SignInPage from "./pages/SignInPage";
 import DashboardPage from "./pages/DashboardPage";
-import UserManagementPage from "./pages/UserManagementPage";
+import AdminPage from "./pages/AdminPage";
 import RequireAuth from "./components/RequireAuth.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import "./App.css";
@@ -18,7 +18,11 @@ function App() {
           <div className="nav-links">
             <Link to="/">Landing</Link>
             <Link to="/dashboard">Dashboard</Link>
-            {auth?.payload?.role === "admin" && <Link to="/users">Users</Link>}
+            {auth?.payload?.role === "admin" && (
+              <>
+                <Link to="/admin">Admin</Link>
+              </>
+            )}
             {auth?.token ? (
               <button type="button" onClick={logout} className="nav-button">
                 Sign Out
@@ -37,7 +41,15 @@ function App() {
               path="/users"
               element={
                 <RequireAuth role="admin">
-                  <UserManagementPage />
+                  <AdminPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth role="admin">
+                  <AdminPage />
                 </RequireAuth>
               }
             />

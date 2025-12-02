@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { select } from "d3-selection";
 import Tooltip from "@mui/material/Tooltip";
@@ -6,6 +6,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ThreeMetricChart from "../components/ThreeMetricChart.jsx";
 import { CardBody, CardContainer } from "../components/TiltCard.jsx";
 import { fetchSnapshots, fetchNodeSummary, fetchNodeVms } from "../services/proxmoxApiClient.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import "./DashboardPage.css";
 
 const SAMPLE_SIZE = 20;
@@ -17,6 +18,10 @@ const PROXMOX_NODE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_PROXMOX_NODE) || "pve";
 const PROXMOX_VMID =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_PROXMOX_VMID) || "102";
+const API_BASE =
+  typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE
+    ? import.meta.env.VITE_API_BASE.replace(/\/$/, "")
+    : "http://localhost:4100";
 
 const palette = {
   blue: "#60a5fa",
@@ -235,10 +240,14 @@ function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [status, setStatus] = useState({
     type: "loading",
-    message: "Connecting to Proxmox…",
+            message: "Connecting to Proxmox...",
   });
   const [nodeSummary, setNodeSummary] = useState(null);
   const [vmList, setVmList] = useState([]);
+  const [availableNodes, setAvailableNodes] = useState([PROXMOX_NODE]);
+  const [selectedNode, setSelectedNode] = useState(PROXMOX_NODE);
+  const [selectedVmid, setSelectedVmid] = useState(PROXMOX_VMID);
+  const { auth } = useAuth();
 
   const { blue, teal, purple, orange } = palette;
 
@@ -262,18 +271,18 @@ function DashboardPage() {
         <div className="vm-metrics">
           <div>
             <span>CPU</span>
-            <strong>{Number.isFinite(vm?.cpu) ? `${clamp(vm.cpu * 100, 0, 400).toFixed(1)}%` : "—"}</strong>
+            <strong>{Number.isFinite(vm?.cpu) ? `${clamp(vm.cpu * 100, 0, 400).toFixed(1)}%` : "â€”"}</strong>
           </div>
           <div>
             <span>Memory</span>
             <strong>
               {Number.isFinite(vm?.mem) && Number.isFinite(vm?.maxMem) && vm.maxMem > 0
                 ? `${clamp((vm.mem / vm.maxMem) * 100, 0, 100).toFixed(1)}%`
-                : "—"}
+                : "â€”"}
             </strong>
             <small>
-              {Number.isFinite(vm?.mem) ? `${(vm.mem / 1024 ** 3).toFixed(2)} GB` : "—"} /{" "}
-              {Number.isFinite(vm?.maxMem) ? `${(vm.maxMem / 1024 ** 3).toFixed(2)} GB` : "—"}
+              {Number.isFinite(vm?.mem) ? `${(vm.mem / 1024 ** 3).toFixed(2)} GB` : "â€”"} /{" "}
+              {Number.isFinite(vm?.maxMem) ? `${(vm.maxMem / 1024 ** 3).toFixed(2)} GB` : "â€”"}
             </small>
           </div>
           <div>
@@ -281,7 +290,7 @@ function DashboardPage() {
             <strong>
               {Number.isFinite(vm?.uptimeSeconds)
                 ? `${Math.floor(vm.uptimeSeconds / 3600)}h ${Math.floor((vm.uptimeSeconds % 3600) / 60)}m`
-                : "—"}
+                : "â€”"}
             </strong>
           </div>
         </div>
@@ -459,15 +468,56 @@ function DashboardPage() {
   }, [blue, points.diskRead, points.diskWrite, points.time, teal]);
 
   useEffect(() => {
+    let aborted = false;
+    const token = auth?.token;
+
+    if (!token) {
+      setAvailableNodes((prev) => (prev?.length ? prev : [PROXMOX_NODE]));
+      setSelectedNode((prev) => prev || PROXMOX_NODE);
+      return undefined;
+    }
+
+    const loadNodes = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/proxmox/nodes`, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (aborted) return;
+        const nodes = Array.isArray(data?.nodes)
+          ? data.nodes.map((n) => n?.node).filter(Boolean)
+          : [];
+        const unique = Array.from(new Set([PROXMOX_NODE, ...nodes]));
+        setAvailableNodes(unique);
+        if (!unique.includes(selectedNode)) {
+          setSelectedNode(unique[0] || PROXMOX_NODE);
+        }
+      } catch {
+        if (aborted) return;
+        setAvailableNodes((prev) => (prev?.length ? prev : [PROXMOX_NODE]));
+      }
+    };
+
+    loadNodes();
+    return () => {
+      aborted = true;
+    };
+  }, [auth?.token, selectedNode]);
+
+  useEffect(() => {
     if (demoMode) {
-      setStatus({ type: "demo", message: "Demo mode active." });
+        setStatus({ type: "demo", message: "Demo mode active." });
       return;
     }
 
     let cancelled = false;
-    setStatus((prev) =>
+        setStatus((prev) =>
       prev.type === "error"
-        ? { type: "loading", message: "Reconnecting to Proxmox…" }
+        ? { type: "loading", message: "Reconnecting to Proxmox..." }
         : prev
     );
 
@@ -475,12 +525,12 @@ function DashboardPage() {
       try {
         const [snapResponse, nodeResponse, vmsResponse] = await Promise.all([
           fetchSnapshots({
-            node: PROXMOX_NODE,
-            vmid: PROXMOX_VMID,
+            node: selectedNode,
+            vmid: selectedVmid,
             limit: SAMPLE_SIZE,
           }),
-          fetchNodeSummary({ node: PROXMOX_NODE }),
-          fetchNodeVms({ node: PROXMOX_NODE }),
+          fetchNodeSummary({ node: selectedNode }),
+          fetchNodeVms({ node: selectedNode }),
         ]);
 
         if (cancelled) return;
@@ -489,14 +539,14 @@ function DashboardPage() {
         setNodeSummary(nodeData);
         setVmList(Array.isArray(vmsResponse?.data) ? vmsResponse.data : []);
 
-        const nodeName = nodeData?.node ?? PROXMOX_NODE;
+        const nodeName = nodeData?.node ?? selectedNode;
         const snapshots = Array.isArray(snapResponse?.data) ? snapResponse.data : [];
         if (snapshots.length === 0) {
           setPoints(createEmptyPoints());
           setLastUpdated(null);
           setStatus({
             type: "waiting",
-            message: `Waiting for Proxmox snapshots on node ${nodeName}…`,
+            message: `Waiting for Proxmox snapshots on node ${nodeName}...`,
           });
           return;
         }
@@ -510,14 +560,14 @@ function DashboardPage() {
         setLastUpdated(lastTimestamp);
         setStatus({
           type: "live",
-          message: `Live data · Node ${nodeName}, VMID ${PROXMOX_VMID}`,
+          message: `Live data - Node ${nodeName}, VMID ${selectedVmid}`,
         });
       } catch (err) {
         if (cancelled) return;
         console.error("Failed to load Proxmox telemetry", err);
         setStatus({
           type: "error",
-          message: err?.message || "Failed to load Proxmox telemetry.",
+            message: err?.message || "Failed to load Proxmox telemetry.",
         });
       }
     };
@@ -528,7 +578,7 @@ function DashboardPage() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [demoMode, intervalMs]);
+  }, [demoMode, intervalMs, selectedNode, selectedVmid]);
 
   useEffect(() => {
     if (!demoMode) return undefined;
@@ -557,7 +607,7 @@ function DashboardPage() {
   })();
 
   const nodeLoadAverage = (() => {
-    if (!nodeSummary?.loadAvg) return "—";
+    if (!nodeSummary?.loadAvg) return "â€”";
     if (Array.isArray(nodeSummary.loadAvg)) {
       return nodeSummary.loadAvg.map((value) => Number(value).toFixed(2)).join(" / ");
     }
@@ -565,14 +615,14 @@ function DashboardPage() {
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 3);
-    return parts.length ? parts.join(" / ") : "—";
+    return parts.length ? parts.join(" / ") : "â€”";
   })();
 
   const runningVmCount = vmList.reduce(
     (count, vm) => count + (vm?.status === "running" ? 1 : 0),
     0
   );
-  const nodeDisplayName = nodeSummary?.node ?? PROXMOX_NODE;
+  const nodeDisplayName = nodeSummary?.node ?? selectedNode ?? PROXMOX_NODE;
   const nodeUptimeSince =
     Number.isFinite(nodeSummary?.uptimeSeconds) && nodeSummary.uptimeSeconds > 0
       ? new Date(Date.now() - nodeSummary.uptimeSeconds * 1000).toLocaleString()
@@ -618,8 +668,8 @@ function DashboardPage() {
       return {
         label,
         lines: [
-          { name: "Ingress", value: Number.isFinite(ingress) ? `${ingress.toFixed(1)} Kb/s` : "—" },
-          { name: "Egress", value: Number.isFinite(egress) ? `${egress.toFixed(1)} Kb/s` : "—" },
+          { name: "Ingress", value: Number.isFinite(ingress) ? `${ingress.toFixed(1)} Kb/s` : "â€”" },
+          { name: "Egress", value: Number.isFinite(egress) ? `${egress.toFixed(1)} Kb/s` : "â€”" },
         ],
       };
     },
@@ -638,8 +688,8 @@ function DashboardPage() {
       return {
         label,
         lines: [
-          { name: "Read", value: Number.isFinite(read) ? `${read.toFixed(2)} MB/s` : "—" },
-          { name: "Write", value: Number.isFinite(write) ? `${write.toFixed(2)} MB/s` : "—" },
+          { name: "Read", value: Number.isFinite(read) ? `${read.toFixed(2)} MB/s` : "â€”" },
+          { name: "Write", value: Number.isFinite(write) ? `${write.toFixed(2)} MB/s` : "â€”" },
         ],
       };
     },
@@ -649,6 +699,10 @@ function DashboardPage() {
   const handleIntervalChange = (event) => {
     const value = Number(event.target.value) || DEFAULT_INTERVAL;
     setIntervalMs(Math.max(1000, value));
+  };
+
+  const handleNodeChange = (event) => {
+    setSelectedNode(event.target.value);
   };
 
   return (
@@ -661,13 +715,23 @@ function DashboardPage() {
             {status.message}
             {status.type === "live" && lastUpdated && (
               <>
-                {" · Updated "}
+                {" Â· Updated "}
                 {formatTimestamp(lastUpdated)}
               </>
             )}
           </p>
         </div>
         <div className="dash-controls">
+          <label>
+            Node
+            <select value={selectedNode} onChange={handleNodeChange}>
+              {availableNodes.map((node) => (
+                <option key={node} value={node}>
+                  {node}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Interval (ms)
             <input
@@ -719,23 +783,23 @@ function DashboardPage() {
               </NodeCard>
               <NodeCard>
                 <span className="node-info-label">CPU Usage</span>
-                <strong>{Number.isFinite(nodeCpuPercent) ? `${nodeCpuPercent.toFixed(1)}%` : "—"}</strong>
+                <strong>{Number.isFinite(nodeCpuPercent) ? `${nodeCpuPercent.toFixed(1)}%` : "â€”"}</strong>
                 {Number.isFinite(nodeSummary?.maxCpu) && <span className="node-info-meta">{nodeSummary.maxCpu} cores</span>}
               </NodeCard>
               <NodeCard>
                 <span className="node-info-label">Memory Usage</span>
-                <strong>{Number.isFinite(nodeMemPercent) ? `${nodeMemPercent.toFixed(1)}%` : "—"}</strong>
+                <strong>{Number.isFinite(nodeMemPercent) ? `${nodeMemPercent.toFixed(1)}%` : "â€”"}</strong>
                 <span className="node-info-meta">
-                  {Number.isFinite(nodeMemUsed) ? `${(nodeMemUsed / 1024 ** 3).toFixed(2)} GB` : "—"} /{" "}
-                  {Number.isFinite(nodeMemTotal) ? `${(nodeMemTotal / 1024 ** 3).toFixed(2)} GB` : "—"}
+                  {Number.isFinite(nodeMemUsed) ? `${(nodeMemUsed / 1024 ** 3).toFixed(2)} GB` : "â€”"} /{" "}
+                  {Number.isFinite(nodeMemTotal) ? `${(nodeMemTotal / 1024 ** 3).toFixed(2)} GB` : "â€”"}
                 </span>
               </NodeCard>
               <NodeCard>
                 <span className="node-info-label">Filesystem</span>
-                <strong>{Number.isFinite(nodeFsPercent) ? `${nodeFsPercent.toFixed(1)}%` : "—"}</strong>
+                <strong>{Number.isFinite(nodeFsPercent) ? `${nodeFsPercent.toFixed(1)}%` : "â€”"}</strong>
                 <span className="node-info-meta">
-                  {Number.isFinite(nodeFsUsed) ? `${(nodeFsUsed / 1024 ** 3).toFixed(2)} GB` : "—"} /{" "}
-                  {Number.isFinite(nodeFsTotal) ? `${(nodeFsTotal / 1024 ** 3).toFixed(2)} GB` : "—"}
+                  {Number.isFinite(nodeFsUsed) ? `${(nodeFsUsed / 1024 ** 3).toFixed(2)} GB` : "â€”"} /{" "}
+                  {Number.isFinite(nodeFsTotal) ? `${(nodeFsTotal / 1024 ** 3).toFixed(2)} GB` : "â€”"}
                 </span>
               </NodeCard>
               <NodeCard>
@@ -743,7 +807,7 @@ function DashboardPage() {
                 <strong>
                   {Number.isFinite(nodeSummary?.uptimeSeconds)
                     ? `${Math.floor(nodeSummary.uptimeSeconds / 3600)}h ${Math.floor((nodeSummary.uptimeSeconds % 3600) / 60)}m`
-                    : "—"}
+                    : "â€”"}
                 </strong>
                 {nodeUptimeSince && <span className="node-info-meta">since {nodeUptimeSince}</span>}
               </NodeCard>
@@ -764,7 +828,7 @@ function DashboardPage() {
               </NodeCard>
             </div>
           ) : (
-            <p className="node-info-empty">Waiting for node metrics…</p>
+            <p className="node-info-empty">Waiting for node metricsâ€¦</p>
           )}
         </section>
 
@@ -919,3 +983,5 @@ function ChartLensOverlay({ chartDomRef, chartInstanceRef, getHoverData }) {
 }
 
 export default DashboardPage;
+
+

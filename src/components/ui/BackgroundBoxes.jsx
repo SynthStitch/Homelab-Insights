@@ -23,10 +23,11 @@ const BoxesCore = ({ className, rows = 60, cols = 30, ...rest }) => {
   return (
     <div
       style={{
-        transform: "translate(-40%,-60%) skewX(-48deg) skewY(14deg) scale(0.675)",
+        // Adjust grid position/scale to cover corners: nudge further left/down and enlarge.
+        transform: "translate(-70%,-10%) skewX(-48deg) skewY(14deg) scale(1.3)",
       }}
       className={cn(
-        "absolute -top-1/4 left-1/4 z-0 flex h-full w-full -translate-x-1/2 -translate-y-1/2 p-4",
+        "absolute top-1/2 left-1/2 z-0 flex h-[220%] w-[220%] -translate-x-1/2 -translate-y-1/2 p-4",
         className,
       )}
       {...rest}

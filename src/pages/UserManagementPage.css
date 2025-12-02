@@ -179,6 +179,27 @@
   font-size: 0.9rem;
 }
 
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.status-message {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(129, 140, 248, 0.85);
+}
+
+.status-message.status-error {
+  color: #fda4af;
+}
+
+.status-message.status-success {
+  color: #a7f3d0;
+}
+
 @media (max-width: 640px) {
   .users-panel button {
     width: 100%;
