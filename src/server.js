@@ -4,6 +4,7 @@ import cors from "cors";
 import authRoutes from "./routes/auth.js";
 import usersRoutes from "./routes/users.js";
 import proxmoxRoutes from "./routes/proxmox.js";
+import assistantRoutes from "./routes/assistant.js";
 import { authenticate, adminOnly } from "./middlewares/auth.js";
 import { config } from "./config.js";
 import { connectMongo } from "./db/mongo.js";
@@ -22,6 +23,8 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", authenticate, adminOnly, usersRoutes);
 app.use("/api/proxmox", proxmoxRoutes);
+// AI assistant (OpenAI) chat endpoint
+app.use("/api/assistant", assistantRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });

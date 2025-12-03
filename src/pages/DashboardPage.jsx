@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { select } from "d3-selection";
 import Tooltip from "@mui/material/Tooltip";
@@ -246,7 +246,7 @@ function DashboardPage() {
   const [vmList, setVmList] = useState([]);
   const [availableNodes, setAvailableNodes] = useState([PROXMOX_NODE]);
   const [selectedNode, setSelectedNode] = useState(PROXMOX_NODE);
-  const [selectedVmid, setSelectedVmid] = useState(PROXMOX_VMID);
+  const [selectedVmid] = useState(PROXMOX_VMID);
   const { auth } = useAuth();
 
   const { blue, teal, purple, orange } = palette;
@@ -271,18 +271,18 @@ function DashboardPage() {
         <div className="vm-metrics">
           <div>
             <span>CPU</span>
-            <strong>{Number.isFinite(vm?.cpu) ? `${clamp(vm.cpu * 100, 0, 400).toFixed(1)}%` : "â€”"}</strong>
+            <strong>{Number.isFinite(vm?.cpu) ? `${clamp(vm.cpu * 100, 0, 400).toFixed(1)}%` : "—"}</strong>
           </div>
           <div>
             <span>Memory</span>
             <strong>
               {Number.isFinite(vm?.mem) && Number.isFinite(vm?.maxMem) && vm.maxMem > 0
                 ? `${clamp((vm.mem / vm.maxMem) * 100, 0, 100).toFixed(1)}%`
-                : "â€”"}
+                : "—"}
             </strong>
             <small>
-              {Number.isFinite(vm?.mem) ? `${(vm.mem / 1024 ** 3).toFixed(2)} GB` : "â€”"} /{" "}
-              {Number.isFinite(vm?.maxMem) ? `${(vm.maxMem / 1024 ** 3).toFixed(2)} GB` : "â€”"}
+              {Number.isFinite(vm?.mem) ? `${(vm.mem / 1024 ** 3).toFixed(2)} GB` : "—"} /{" "}
+              {Number.isFinite(vm?.maxMem) ? `${(vm.maxMem / 1024 ** 3).toFixed(2)} GB` : "—"}
             </small>
           </div>
           <div>
@@ -290,7 +290,7 @@ function DashboardPage() {
             <strong>
               {Number.isFinite(vm?.uptimeSeconds)
                 ? `${Math.floor(vm.uptimeSeconds / 3600)}h ${Math.floor((vm.uptimeSeconds % 3600) / 60)}m`
-                : "â€”"}
+                : "—"}
             </strong>
           </div>
         </div>
@@ -607,7 +607,7 @@ function DashboardPage() {
   })();
 
   const nodeLoadAverage = (() => {
-    if (!nodeSummary?.loadAvg) return "â€”";
+    if (!nodeSummary?.loadAvg) return "—";
     if (Array.isArray(nodeSummary.loadAvg)) {
       return nodeSummary.loadAvg.map((value) => Number(value).toFixed(2)).join(" / ");
     }
@@ -615,7 +615,7 @@ function DashboardPage() {
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 3);
-    return parts.length ? parts.join(" / ") : "â€”";
+    return parts.length ? parts.join(" / ") : "—";
   })();
 
   const runningVmCount = vmList.reduce(
@@ -668,8 +668,8 @@ function DashboardPage() {
       return {
         label,
         lines: [
-          { name: "Ingress", value: Number.isFinite(ingress) ? `${ingress.toFixed(1)} Kb/s` : "â€”" },
-          { name: "Egress", value: Number.isFinite(egress) ? `${egress.toFixed(1)} Kb/s` : "â€”" },
+          { name: "Ingress", value: Number.isFinite(ingress) ? `${ingress.toFixed(1)} Kb/s` : "—" },
+          { name: "Egress", value: Number.isFinite(egress) ? `${egress.toFixed(1)} Kb/s` : "—" },
         ],
       };
     },
@@ -688,8 +688,8 @@ function DashboardPage() {
       return {
         label,
         lines: [
-          { name: "Read", value: Number.isFinite(read) ? `${read.toFixed(2)} MB/s` : "â€”" },
-          { name: "Write", value: Number.isFinite(write) ? `${write.toFixed(2)} MB/s` : "â€”" },
+          { name: "Read", value: Number.isFinite(read) ? `${read.toFixed(2)} MB/s` : "—" },
+          { name: "Write", value: Number.isFinite(write) ? `${write.toFixed(2)} MB/s` : "—" },
         ],
       };
     },
@@ -715,7 +715,7 @@ function DashboardPage() {
             {status.message}
             {status.type === "live" && lastUpdated && (
               <>
-                {" Â· Updated "}
+                {" · Updated "}
                 {formatTimestamp(lastUpdated)}
               </>
             )}
@@ -783,23 +783,23 @@ function DashboardPage() {
               </NodeCard>
               <NodeCard>
                 <span className="node-info-label">CPU Usage</span>
-                <strong>{Number.isFinite(nodeCpuPercent) ? `${nodeCpuPercent.toFixed(1)}%` : "â€”"}</strong>
+                <strong>{Number.isFinite(nodeCpuPercent) ? `${nodeCpuPercent.toFixed(1)}%` : "—"}</strong>
                 {Number.isFinite(nodeSummary?.maxCpu) && <span className="node-info-meta">{nodeSummary.maxCpu} cores</span>}
               </NodeCard>
               <NodeCard>
                 <span className="node-info-label">Memory Usage</span>
-                <strong>{Number.isFinite(nodeMemPercent) ? `${nodeMemPercent.toFixed(1)}%` : "â€”"}</strong>
+                <strong>{Number.isFinite(nodeMemPercent) ? `${nodeMemPercent.toFixed(1)}%` : "—"}</strong>
                 <span className="node-info-meta">
-                  {Number.isFinite(nodeMemUsed) ? `${(nodeMemUsed / 1024 ** 3).toFixed(2)} GB` : "â€”"} /{" "}
-                  {Number.isFinite(nodeMemTotal) ? `${(nodeMemTotal / 1024 ** 3).toFixed(2)} GB` : "â€”"}
+                  {Number.isFinite(nodeMemUsed) ? `${(nodeMemUsed / 1024 ** 3).toFixed(2)} GB` : "—"} /{" "}
+                  {Number.isFinite(nodeMemTotal) ? `${(nodeMemTotal / 1024 ** 3).toFixed(2)} GB` : "—"}
                 </span>
               </NodeCard>
               <NodeCard>
                 <span className="node-info-label">Filesystem</span>
-                <strong>{Number.isFinite(nodeFsPercent) ? `${nodeFsPercent.toFixed(1)}%` : "â€”"}</strong>
+                <strong>{Number.isFinite(nodeFsPercent) ? `${nodeFsPercent.toFixed(1)}%` : "—"}</strong>
                 <span className="node-info-meta">
-                  {Number.isFinite(nodeFsUsed) ? `${(nodeFsUsed / 1024 ** 3).toFixed(2)} GB` : "â€”"} /{" "}
-                  {Number.isFinite(nodeFsTotal) ? `${(nodeFsTotal / 1024 ** 3).toFixed(2)} GB` : "â€”"}
+                  {Number.isFinite(nodeFsUsed) ? `${(nodeFsUsed / 1024 ** 3).toFixed(2)} GB` : "—"} /{" "}
+                  {Number.isFinite(nodeFsTotal) ? `${(nodeFsTotal / 1024 ** 3).toFixed(2)} GB` : "—"}
                 </span>
               </NodeCard>
               <NodeCard>
@@ -807,7 +807,7 @@ function DashboardPage() {
                 <strong>
                   {Number.isFinite(nodeSummary?.uptimeSeconds)
                     ? `${Math.floor(nodeSummary.uptimeSeconds / 3600)}h ${Math.floor((nodeSummary.uptimeSeconds % 3600) / 60)}m`
-                    : "â€”"}
+                    : "—"}
                 </strong>
                 {nodeUptimeSince && <span className="node-info-meta">since {nodeUptimeSince}</span>}
               </NodeCard>
@@ -828,7 +828,7 @@ function DashboardPage() {
               </NodeCard>
             </div>
           ) : (
-            <p className="node-info-empty">Waiting for node metricsâ€¦</p>
+            <p className="node-info-empty">Waiting for node metrics…</p>
           )}
         </section>
 
@@ -983,5 +983,6 @@ function ChartLensOverlay({ chartDomRef, chartInstanceRef, getHoverData }) {
 }
 
 export default DashboardPage;
+
 
 

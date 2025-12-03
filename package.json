@@ -28,12 +28,15 @@
     "mongoose": "^8.9.4",
     "motion": "^12.23.24",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.11",
+    "openai": "^6.9.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3",
     "simplex-noise": "^4.0.3",
     "tailwind-merge": "^3.3.1",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "twilio": "^5.10.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

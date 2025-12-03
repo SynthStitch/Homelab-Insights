@@ -4,6 +4,7 @@ import SignInPage from "./pages/SignInPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
 import RequireAuth from "./components/RequireAuth.jsx";
+import AssistantChat from "./components/AssistantChat.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import "./App.css";
 
@@ -55,6 +56,7 @@ function App() {
             />
           </Routes>
         </main>
+        <AssistantChat />
       </div>
     </BrowserRouter>
   );
