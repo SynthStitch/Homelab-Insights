@@ -3,6 +3,19 @@ const API_BASE =
     ? import.meta.env.VITE_API_BASE.replace(/\/$/, "")
     : "http://localhost:4100";
 
+const AUTH_STORAGE_KEY = "homelab-auth";
+
+function getStoredToken() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.token || null;
+  } catch (err) {
+    return null;
+  }
+}
+
 function buildUrl(path, params = {}) {
   const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
   const baseUrl = `${API_BASE}/`;
@@ -15,10 +28,12 @@ function buildUrl(path, params = {}) {
 }
 
 async function fetchJson(path, params) {
+  const token = getStoredToken();
   const response = await fetch(buildUrl(path, params), {
     credentials: "include",
     headers: {
       Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
 

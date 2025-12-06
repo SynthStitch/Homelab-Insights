@@ -31,6 +31,14 @@ export const config = {
     defaultVmid: getEnv("PROXMOX_DEFAULT_VMID", ""),
     rejectUnauthorized: getEnvBoolean("PROXMOX_REJECT_UNAUTHORIZED", true),
     pollIntervalMs: Number(getEnv("PROXMOX_POLL_INTERVAL_MS", "15000")) || 15000,
+    // Optional secondary node/host configuration
+    secondary: {
+      baseUrl: getEnv("SECOND_PROXMOX_API_BASE", ""),
+      tokenId: getEnv("SECOND_PROXMOX_API_TOKEN_ID", ""),
+      tokenSecret: getEnv("SECOND_PROXMOX_API_TOKEN_SECRET", ""),
+      node: getEnv("SECOND_PROXMOX_NODE", ""),
+      defaultVmid: getEnv("SECOND_PROXMOX_VMID", ""),
+    },
   },
   mongo: {
     uri: getEnv("MONGODB_URI", ""),

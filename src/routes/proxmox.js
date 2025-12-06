@@ -18,12 +18,14 @@ import { authenticate, adminOnly } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.get("/vm-status", getVmStatus);
-router.get("/proxy", proxyProxmoxPath);
-router.get("/snapshots/latest", getLatestSnapshot);
-router.get("/snapshots", listSnapshots);
-router.get("/node-summary", getNodeSummary);
-router.get("/vms", listNodeVms);
+// Protect these so unauthenticated users cannot see node/VM data
+router.get("/vm-status", authenticate, getVmStatus);
+router.get("/proxy", authenticate, proxyProxmoxPath);
+router.get("/snapshots/latest", authenticate, getLatestSnapshot);
+router.get("/snapshots", authenticate, listSnapshots);
+router.get("/node-summary", authenticate, getNodeSummary);
+// VM listing should be auth-protected so we can enforce per-user allowlists
+router.get("/vms", authenticate, listNodeVms);
 
 // Admin-only node management/testing endpoints
 // http://localhost:4100/api/proxmox/nodes/test  (POST) - test a node connection before saving

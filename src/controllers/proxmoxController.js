@@ -4,8 +4,14 @@ import {
   fetchNodeStatus,
   fetchNodeVms,
 } from "../services/proxmoxClient.js";
-import { ProxmoxSnapshot } from "../models/index.js";
+import { ProxmoxSnapshot, ProxmoxNode } from "../models/index.js";
 import { config } from "../config.js";
+
+/**
+ * Controller layer for Proxmox-related routes.
+ * Uses per-node config from Mongo when available; falls back to env config.
+ * This keeps UI-added nodes (with their own host/IP and token) working without .env edits.
+ */
 
 function buildErrorResponse(err) {
   const status = Number.isInteger(err?.status) ? err.status : 500;
@@ -21,9 +27,14 @@ function buildErrorResponse(err) {
 
 export const getVmStatus = async (req, res) => {
   try {
+    const nodeName = req.query.node ?? config.proxmox.defaultNode ?? undefined;
+    const nodeConfig = nodeName
+      ? await ProxmoxNode.findOne({ node: nodeName }).lean().exec()
+      : null;
     const data = await fetchVmStatus({
-      node: req.query.node,
+      node: nodeName,
       vmid: req.query.vmid,
+      nodeConfig,
     });
     res.status(200);
     res.json({ result: 200, data });
@@ -43,6 +54,7 @@ export const proxyProxmoxPath = async (req, res) => {
     return;
   }
   try {
+    // Note: proxy currently uses env config only; extend with node lookup if you expose it in UI.
     const data = await fetchRaw(path, { signal: req.signal });
     res.status(200);
     res.json({ result: 200, data });
@@ -152,8 +164,13 @@ function mapNodeSummary(payload) {
 
 export const getNodeSummary = async (req, res) => {
   try {
+    const nodeName = req.query.node ?? config.proxmox.defaultNode ?? undefined;
+    const nodeConfig = nodeName
+      ? await ProxmoxNode.findOne({ node: nodeName }).lean().exec()
+      : null;
     const payload = await fetchNodeStatus({
-      node: req.query.node,
+      node: nodeName,
+      nodeConfig,
     });
     const data = mapNodeSummary(payload);
     res.status(200);
@@ -204,13 +221,24 @@ function summarizeSnapshot(doc) {
 
 export const listNodeVms = async (req, res) => {
   try {
-    const payload = await fetchNodeVms({
-      node: req.query.node,
-    });
     const nodeName = req.query.node ?? config.proxmox.defaultNode ?? undefined;
+    const nodeConfig = nodeName
+      ? await ProxmoxNode.findOne({ node: nodeName }).lean().exec()
+      : null;
+    const payload = await fetchNodeVms({
+      node: nodeName,
+      nodeConfig,
+    });
     const vms = mapVmList(payload);
 
-    const vmIds = vms.map((vm) => String(vm.id)).filter(Boolean);
+    // Enforce per-user VM allowlist (unless "*" or empty)
+    const allowedVmIds = Array.isArray(req.user?.allowedVmIds) ? req.user.allowedVmIds : [];
+    const allowAll = allowedVmIds.length === 0 || allowedVmIds.includes("*");
+    const filteredVms = allowAll
+      ? vms
+      : vms.filter((vm) => allowedVmIds.includes(String(vm.id)));
+
+    const vmIds = filteredVms.map((vm) => String(vm.id)).filter(Boolean);
     let latestSnapshots = new Map();
     if (vmIds.length > 0) {
       const query = {
@@ -231,7 +259,7 @@ export const listNodeVms = async (req, res) => {
       }
     }
 
-    const enriched = vms.map((vm) => {
+    const enriched = filteredVms.map((vm) => {
       const snapshot = latestSnapshots.get(String(vm.id));
       return snapshot
         ? {

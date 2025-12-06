@@ -1,0 +1,128 @@
+.info-page {
+  width: min(1100px, 95vw);
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4rem) 0 clamp(3rem, 7vw, 4.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.info-hero {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.info-hero h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 2.9rem);
+  color: #facc15;
+}
+
+.info-hero .lede {
+  color: rgba(226, 232, 240, 0.9);
+  max-width: 720px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  color: rgba(226, 232, 240, 0.7);
+  margin: 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.info-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.6));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  padding: 1.2rem 1.25rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+}
+
+.info-card h3 {
+  margin: 0 0 0.4rem;
+}
+
+.info-card p {
+  margin: 0.25rem 0 0.6rem;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pill {
+  background: rgba(59, 130, 246, 0.15);
+  color: #bfdbfe;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.info-faq {
+  display: grid;
+  gap: 1rem;
+}
+
+.info-faq h2 {
+  margin: 0;
+}
+
+.faq-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.faq-item {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+
+.faq-item summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.faq-item p {
+  margin: 0.4rem 0 0;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.contact-card {
+  max-width: 720px;
+}
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.contact-list strong {
+  color: #facc15;
+}
+
+.contact-link {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.fine-print {
+  color: rgba(226, 232, 240, 0.6);
+  font-size: 0.9rem;
+}

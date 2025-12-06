@@ -71,6 +71,9 @@ function AdminPage() {
   const [userError, setUserError] = useState("");
   const [createForm, setCreateForm] = useState(buildDefaultCreateUserForm);
   const [createBusy, setCreateBusy] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+  const [editForm, setEditForm] = useState(buildDefaultCreateUserForm);
+  const [editBusy, setEditBusy] = useState(false);
   const [availableVms, setAvailableVms] = useState([]);
 
   const [nodes, setNodes] = useState([]);
@@ -78,6 +81,8 @@ function AdminPage() {
   const [nodeStatus, setNodeStatus] = useState({ message: "", variant: "info" });
   const [nodeTested, setNodeTested] = useState(false);
   const [nodeBusy, setNodeBusy] = useState(false);
+  const [alertForm, setAlertForm] = useState({ phone: "", email: "", cpuThreshold: 80 });
+  const [alertStatus, setAlertStatus] = useState({ message: "", variant: "info" });
 
   useEffect(() => {
     if (!auth?.token) {
@@ -177,6 +182,77 @@ function AdminPage() {
     setCreateForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const startEditUser = (user) => {
+    setEditUser(user.username);
+    setEditForm({
+      username: user.username,
+      email: user.email || "",
+      password: "",
+      role: user.role || "viewer",
+      allowedVmIds: Array.isArray(user.allowedVmIds) ? user.allowedVmIds : [],
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditUser(null);
+    setEditForm(buildDefaultCreateUserForm());
+  };
+
+  const handleEditChange = (event) => {
+    const { name, value, options } = event.target;
+    if (name === "allowedVmIds") {
+      const nextValues = parseSelectValues(options);
+      setEditForm((prev) => ({ ...prev, allowedVmIds: nextValues }));
+      return;
+    }
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleUpdateUser = async (event) => {
+    event.preventDefault();
+    if (!editUser) return;
+    setEditBusy(true);
+    setUserError("");
+    try {
+      const payload = {
+        email: editForm.email || "",
+        role: editForm.role,
+        allowedVmIds: editForm.allowedVmIds,
+      };
+      if (editForm.password && editForm.password.trim()) {
+        payload.password = editForm.password;
+      }
+      await apiRequest(`/api/users/${encodeURIComponent(editUser)}`, auth?.token, {
+        method: "PATCH",
+        body: payload,
+      });
+      const refreshed = await apiRequest("/api/users", auth?.token);
+      setUsers(refreshed?.users ?? []);
+      cancelEdit();
+    } catch (err) {
+      setUserError(normalizeError(err));
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+  const handleDeleteUser = async (username) => {
+    if (!username) return;
+    setUserError("");
+    try {
+      await apiRequest(`/api/users/${encodeURIComponent(username)}`, auth?.token, {
+        method: "DELETE",
+      });
+      const refreshed = await apiRequest("/api/users", auth?.token);
+      setUsers(refreshed?.users ?? []);
+      if (editUser === username) {
+        cancelEdit();
+      }
+    } catch (err) {
+      setUserError(normalizeError(err));
+    }
+  };
+
   const handleCreate = async (event) => {
     event.preventDefault();
     setCreateBusy(true);
@@ -260,6 +336,30 @@ function AdminPage() {
       });
     } catch (err) {
       setNodeStatus({ message: normalizeError(err), variant: "error" });
+    }
+  };
+
+  const handleAlertChange = (event) => {
+    const { name, value } = event.target;
+    setAlertForm((prev) => ({ ...prev, [name]: value }));
+    setAlertStatus({ message: "", variant: "info" });
+  };
+
+  const sendTestAlert = async (event) => {
+    event.preventDefault();
+    setAlertStatus({ message: "Sending test alert...", variant: "info" });
+    try {
+      await apiRequest("/api/alerts/test", auth?.token, {
+        method: "POST",
+        body: {
+          phone: alertForm.phone || undefined,
+          email: alertForm.email || undefined,
+          cpuThreshold: Number(alertForm.cpuThreshold) || 80,
+        },
+      });
+      setAlertStatus({ message: "Test alert sent.", variant: "success" });
+    } catch (err) {
+      setAlertStatus({ message: normalizeError(err), variant: "error" });
     }
   };
 
@@ -376,7 +476,73 @@ function AdminPage() {
                       </span>
                     </p>
                   </div>
+                  <div className="users-actions">
+                    <button type="button" onClick={() => startEditUser(user)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="danger"
+                      onClick={() => handleDeleteUser(user.username)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
+                {editUser === user.username && (
+                  <form className="users-form users-form-inline" onSubmit={handleUpdateUser}>
+                    <GlowInput label="Username" name="username" value={editForm.username} disabled />
+                    <GlowInput
+                      label="Email (optional)"
+                      name="email"
+                      type="email"
+                      value={editForm.email}
+                      onChange={handleEditChange}
+                      placeholder="user@homelab.local"
+                    />
+                    <GlowInput
+                      label="Password (leave blank to keep)"
+                      name="password"
+                      type="password"
+                      value={editForm.password}
+                      onChange={handleEditChange}
+                    />
+                    <label>
+                      <span>Role</span>
+                      <select name="role" value={editForm.role} onChange={handleEditChange}>
+                        <option value="viewer">Viewer</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Allowed VMs</span>
+                      <select
+                        name="allowedVmIds"
+                        multiple
+                        value={editForm.allowedVmIds}
+                        onChange={handleEditChange}
+                      >
+                        <option value="*">All VMs</option>
+                        {availableVms.map((vm) => (
+                          <option key={vm.id ?? vm.name} value={vm.id}>
+                            {vm.name ?? vm.id}
+                          </option>
+                        ))}
+                      </select>
+                      <small className="users-help">
+                        Hold Ctrl / Cmd to select multiple entries. Choose "All VMs" for unrestricted access.
+                      </small>
+                    </label>
+                    <div className="users-actions">
+                      <button type="submit" disabled={editBusy}>
+                        {editBusy ? "Saving..." : "Save"}
+                      </button>
+                      <button type="button" onClick={cancelEdit}>
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
               </li>
             ))}
           </ul>
@@ -482,6 +648,40 @@ function AdminPage() {
             </ul>
           )}
         </div>
+      </section>
+
+      <section className="users-panel">
+        <h3>Alert Tester</h3>
+        <form className="users-form" onSubmit={sendTestAlert}>
+          <GlowInput
+            label="SMS (E.164, e.g., +19523958985)"
+            name="phone"
+            value={alertForm.phone}
+            onChange={handleAlertChange}
+            placeholder="+1..."
+          />
+          <GlowInput
+            label="Email"
+            name="email"
+            type="email"
+            value={alertForm.email}
+            onChange={handleAlertChange}
+            placeholder="alerts@homelab.local"
+          />
+          <GlowInput
+            label="CPU Threshold (%)"
+            name="cpuThreshold"
+            type="number"
+            min={1}
+            max={100}
+            value={alertForm.cpuThreshold}
+            onChange={handleAlertChange}
+          />
+          <button type="submit">Send Test Alert</button>
+          {alertStatus.message && (
+            <p className={`status-message status-${alertStatus.variant}`}>{alertStatus.message}</p>
+          )}
+        </form>
       </section>
     </div>
   );

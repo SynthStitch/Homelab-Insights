@@ -181,9 +181,9 @@ function LandingPage() {
             <Link to="/dashboard" className="landing-action landing-action--primary">
               View dashboard
             </Link>
-            <a href="#learn" className="landing-action landing-action--ghost">
-              Learn more
-            </a>
+            <Link to="/overview" className="landing-action landing-action--ghost">
+              Learn More
+            </Link>
           </section>
 
           <section className="landing-features" id="learn">

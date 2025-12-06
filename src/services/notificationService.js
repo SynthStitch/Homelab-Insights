@@ -12,6 +12,7 @@
 
 import twilio from "twilio";
 import nodemailer from "nodemailer";
+import { TWILIO_INVALID_TO } from "./errorCodes.js";
 
 const {
   TWILIO_ACCOUNT_SID,
@@ -25,6 +26,7 @@ const {
   EMAIL_FROM_ADDRESS,
 } = process.env;
 
+// Note: Twilio A2P campaign is currently blocked/rejected; SMS enablement deferred to later scope.
 const twilioEnabled = Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN); // SMS toggled by env
 
 const emailPort = EMAIL_SMTP_PORT ? Number(EMAIL_SMTP_PORT) : null;
@@ -73,7 +75,14 @@ export async function sendSmsAlert({ to, body }) {
     payload.from = TWILIO_PHONE_NUMBER;
   }
 
-  return twilioClient.messages.create(payload);
+  try {
+    return await twilioClient.messages.create(payload);
+  } catch (err) {
+    if (err?.code === TWILIO_INVALID_TO) {
+      throw new Error("Invalid destination phone number (must be E.164 and SMS-capable).");
+    }
+    throw err;
+  }
 }
 
 export async function sendEmailAlert({ to, subject, text, html }) {

@@ -1,6 +1,6 @@
 .landing-root {
   min-height: 100vh;
-  padding: clamp(3rem, 7vw, 5rem) 1.5rem clamp(2rem, 6vw, 4rem);
+  padding: clamp(2rem, 5vw, 3.5rem) 1.5rem clamp(2rem, 6vw, 4rem);
   color: #eef3ff;
   display: flex;
   flex-direction: column;
@@ -47,6 +47,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
 }
 
 .title-line {

@@ -246,7 +246,7 @@ function DashboardPage() {
   const [vmList, setVmList] = useState([]);
   const [availableNodes, setAvailableNodes] = useState([PROXMOX_NODE]);
   const [selectedNode, setSelectedNode] = useState(PROXMOX_NODE);
-  const [selectedVmid] = useState(PROXMOX_VMID);
+  const [selectedVmid, setSelectedVmid] = useState(PROXMOX_VMID);
   const { auth } = useAuth();
 
   const { blue, teal, purple, orange } = palette;
@@ -510,7 +510,7 @@ function DashboardPage() {
 
   useEffect(() => {
     if (demoMode) {
-        setStatus({ type: "demo", message: "Demo mode active." });
+      setStatus({ type: "demo", message: "Demo mode active." });
       return;
     }
 
@@ -535,9 +535,18 @@ function DashboardPage() {
 
         if (cancelled) return;
 
-        const nodeData = nodeResponse?.data ?? null;
-        setNodeSummary(nodeData);
-        setVmList(Array.isArray(vmsResponse?.data) ? vmsResponse.data : []);
+      const nodeData = nodeResponse?.data ?? null;
+      setNodeSummary(nodeData);
+      const vmData = Array.isArray(vmsResponse?.data) ? vmsResponse.data : [];
+      setVmList(vmData);
+
+      // If the current VMID isn't present for this node, pick the first VM and refetch.
+      // This keeps charts populated when switching to newly added nodes that have a different VM list.
+      const hasCurrent = vmData.some((vm) => String(vm.id) === String(selectedVmid));
+      if (!hasCurrent && vmData.length > 0) {
+        setSelectedVmid(String(vmData[0].id));
+        return; // allow next tick to refetch with the new vmid
+      }
 
         const nodeName = nodeData?.node ?? selectedNode;
         const snapshots = Array.isArray(snapResponse?.data) ? snapResponse.data : [];
