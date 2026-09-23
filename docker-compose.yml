@@ -1,0 +1,22 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "4100:4100"
+    env_file: .env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DB_NAME: homelab_insights
+      OTEL_SDK_DISABLED: "true"   # no collector in this stack; drop this line if you run docker-compose.observability.yml
+    depends_on:
+      - mongo
+
+volumes:
+  mongo-data:

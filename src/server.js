@@ -1,5 +1,7 @@
 /* eslint-env node */
 import express from "express";
+import path from "node:path";
+import { existsSync } from "node:fs";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
 import usersRoutes from "./routes/users.js";
@@ -29,6 +31,13 @@ app.use("/api/proxmox", proxmoxRoutes);
 app.use("/api/assistant", assistantRoutes);
 // Alerts (test endpoint for SMS/email)
 app.use("/api/alerts", alertsRoutes);
+
+// ponytail: serve the Vite build from the same process; no nginx needed
+const dist = path.resolve("dist");
+if (existsSync(dist)) {
+  app.use(express.static(dist));
+  app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(dist, "index.html")));
+}
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
