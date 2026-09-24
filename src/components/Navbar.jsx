@@ -3,6 +3,8 @@ import { NavLink, Link, useLocation } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext.jsx";
 
 const linkClass = ({ isActive }) => `nav__link${isActive ? " is-active" : ""}`;
+// eslint-disable-next-line no-undef
+const BUILD = typeof __BUILD_TIME__ === "string" ? __BUILD_TIME__.slice(5, 16).replace("T", " ") : "dev";
 
 function Mark() {
   return (
@@ -84,6 +86,9 @@ export default function Navbar({ items = [], isAuthed, username, onLogout }) {
           </button>
         </div>
         <div className="nav__actions">
+          <span className="nav__user" title="Build time (UTC)">
+            build {BUILD}
+          </span>
           {isAuthed && username ? <span className="nav__user">{username}</span> : null}
           {action}
         </div>
