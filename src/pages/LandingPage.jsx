@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "./LandingPage.css";
-import WavyBackground from "../components/WavyBackground.jsx";
-import EncryptedText from "../components/EncryptedText.jsx";
-import { CardBody, CardContainer, CardItem } from "../components/TiltCard.jsx";
 import { fetchNodeSummary } from "../services/proxmoxApiClient.js";
 
 const LANDING_NODE =
@@ -24,18 +21,30 @@ const computePercent = (used, total) => {
 const formatPercent = (value) => (Number.isFinite(value) ? `${value.toFixed(1)}%` : "--");
 
 const formatGigabytes = (value) =>
-  Number.isFinite(value) ? `${(value / 1024 ** 3).toFixed(2)} GB` : "--";
+  Number.isFinite(value) ? `${(value / 1024 ** 3).toFixed(1)} GB` : "--";
 
 const formatUptime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds <= 0) return "--";
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-  return `${hours}h ${minutes}m`;
+  return days > 0 ? `${days}d ${hours}h` : `${hours}h ${minutes}m`;
 };
+
+const features = [
+  {
+    title: "Automated snapshots",
+    copy: "Every node is polled on a fixed cadence and each sample lands in MongoDB, so charts have history the moment you open them.",
+  },
+  {
+    title: "Unified telemetry",
+    copy: "Proxmox nodes and VMs today. OpenTelemetry, Prometheus and Loki compose stacks are in the box when you want more.",
+  },
+  {
+    title: "Stays on your network",
+    copy: "Self-hosted API, database and UI. Nothing phones home. Bring your own OpenAI key if you want the copilot.",
+  },
+];
 
 function LandingPage() {
   const [stats, setStats] = useState({
@@ -46,11 +55,10 @@ function LandingPage() {
     uptimeSeconds: null,
     nodeStatus: "unknown",
   });
-  const [status, setStatus] = useState({ type: "loading", message: "Syncing node status..." });
+  const [status, setStatus] = useState({ type: "loading", label: "Syncing" });
 
   useEffect(() => {
     let aborted = false;
-    setStatus({ type: "loading", message: "Syncing node status..." });
     fetchNodeSummary({ node: LANDING_NODE })
       .then((response) => {
         if (aborted) return;
@@ -58,183 +66,108 @@ function LandingPage() {
         const memory = data?.memory ?? {};
         const totalMem = toNumber(memory.total ?? memory.max);
         const usedMem = toNumber(memory.used);
-        const cpuPercent = Number.isFinite(data?.cpu) ? clamp(data.cpu * 100, 0, 100) : null;
-        const memPercent = computePercent(usedMem, totalMem);
         setStats({
-          cpuPercent,
-          memPercent,
+          cpuPercent: Number.isFinite(data?.cpu) ? clamp(data.cpu * 100) : null,
+          memPercent: computePercent(usedMem, totalMem),
           memUsed: usedMem,
           memTotal: totalMem,
           uptimeSeconds: data?.uptimeSeconds ?? data?.uptime ?? null,
           nodeStatus: data?.status ?? "unknown",
         });
-        setStatus({ type: "ready", message: "Live metrics" });
+        setStatus({ type: "live", label: "Live" });
       })
       .catch((error) => {
         if (aborted) return;
         console.error("Landing page metrics failed", error);
-        setStatus({
-          type: "error",
-          message: error?.message || "Unable to fetch node metrics.",
-        });
+        setStatus({ type: "error", label: "Offline" });
       });
-
     return () => {
       aborted = true;
     };
   }, []);
 
   const uptimeText = useMemo(() => formatUptime(stats.uptimeSeconds), [stats.uptimeSeconds]);
-  const metricCards = useMemo(() => {
-    const nodeStatus = (stats.nodeStatus || "unknown").toLowerCase();
-    return [
-      {
-        id: "node",
-        label: "Node",
-        value: LANDING_NODE,
-        subLabel: stats.nodeStatus || "Unknown",
-        subClass: `metric-sub metric-status-${nodeStatus}`,
-      },
-      {
-        id: "cpu",
-        label: "CPU Utilization",
-        value: formatPercent(stats.cpuPercent),
-        subLabel: "Last 60 seconds",
-      },
-      {
-        id: "memory",
-        label: "Memory Consumption",
-        value: formatPercent(stats.memPercent),
-        subLabel: `${formatGigabytes(stats.memUsed ?? NaN)} / ${formatGigabytes(
-          stats.memTotal ?? NaN,
-        )}`,
-      },
-      {
-        id: "uptime",
-        label: "Uptime",
-        value: uptimeText,
-        subLabel: "Since last reboot",
-      },
-    ];
-  }, [stats.cpuPercent, stats.memPercent, stats.memTotal, stats.memUsed, stats.nodeStatus, uptimeText]);
-
-  const featureCards = useMemo(
-    () => [
-      {
-        id: "snapshots",
-        title: "Automated snapshots",
-        copy: "Poll every 15 seconds and consolidate snapshots in MongoDB.",
-      },
-      {
-        id: "telemetry",
-        title: "Unified telemetry",
-        copy: "Metrics, logs, and traces from Proxmox, Docker, and bare metal.",
-      },
-      {
-        id: "selfhosted",
-        title: "Self-hosted",
-        copy: "Keep data on your network with local processing.",
-      },
-    ],
-    [],
-  );
+  const nodeStatus = (stats.nodeStatus || "unknown").toLowerCase();
 
   return (
-    <WavyBackground
-      containerClassName="landing-wave"
-      className="landing-root"
-      colors={["#1E293B", "#1D4ED8", "#0EA5E9", "#38BDF8"]}
-      waveWidth={60}
-      backgroundFill="#030712"
-      blur={18}
-      speed="slow"
-      waveOpacity={0.4}
-    >
-      <div className="landing-grid">
-        <div className="landing-left">
-          <section className="landing-heading">
-            <h1 className="landing-title">
-              <EncryptedText
-                text="Monitor."
-                className="title-line"
-                revealDelayMs={35}
-                flipDelayMs={55}
-              />
-              <EncryptedText
-                text="Predict."
-                className="title-line"
-                revealDelayMs={45}
-                flipDelayMs={60}
-              />
-              <EncryptedText
-                text="Optimize."
-                className="title-line"
-                revealDelayMs={55}
-                flipDelayMs={70}
-              />
-            </h1>
-            <p>Real-time insights for every node in your homelab.</p>
-            <p className={`landing-status landing-status-${status.type}`}>{status.message}</p>
-          </section>
-
-          <section className="landing-actions">
-            <Link to="/dashboard" className="landing-action landing-action--primary">
-              View dashboard
+    <div className="page landing">
+      <section className="hero">
+        <div className="hero__copy">
+          <p className="eyebrow rise">homelab telemetry · proxmox · docker · otel</p>
+          <h1 className="hero__title">
+            <span className="rise" style={{ "--d": "60ms" }}>
+              Monitor.
+            </span>
+            <span className="rise" style={{ "--d": "140ms" }}>
+              Predict.
+            </span>
+            <span className="rise hero__accent" style={{ "--d": "220ms" }}>
+              Optimize.
+            </span>
+          </h1>
+          <p className="hero__lede rise" style={{ "--d": "300ms" }}>
+            Real-time insight for every node in your homelab. Snapshots every fifteen seconds, one
+            dashboard, and nothing leaves your network.
+          </p>
+          <div className="hero__actions rise" style={{ "--d": "380ms" }}>
+            <Link to="/dashboard" className="btn btn--primary">
+              Open dashboard
             </Link>
-            <Link to="/overview" className="landing-action landing-action--ghost">
-              Learn More
+            <Link to="/overview" className="btn">
+              How it works
             </Link>
-          </section>
-
-          <section className="landing-features" id="learn">
-            {featureCards.map((feature) => (
-              <CardContainer
-                key={feature.id}
-                containerClassName="landing-feature-container"
-                className="landing-feature-tilt"
-              >
-                <CardBody className="landing-feature-card">
-                  <CardItem as="strong" className="feature-title" translateZ={12}>
-                    {feature.title}
-                  </CardItem>
-                  <CardItem as="p" className="feature-copy" translateZ={4}>
-                    {feature.copy}
-                  </CardItem>
-                </CardBody>
-              </CardContainer>
-            ))}
-          </section>
+          </div>
         </div>
 
-        <aside className="landing-right">
-          <section className="landing-metrics">
-            {metricCards.map((metric) => (
-              <CardContainer
-                key={metric.id}
-                containerClassName="landing-metric-container"
-                className="landing-metric-tilt"
-              >
-                <CardBody className="landing-metric-card">
-                  <CardItem as="strong" className="metric-title" translateZ={10} translateY={-2}>
-                    {metric.label}
-                  </CardItem>
-                  <CardItem as="span" className="metric-value" translateZ={18}>
-                    {metric.value}
-                  </CardItem>
-                  <CardItem
-                    as="small"
-                    className={metric.subClass || "metric-sub"}
-                    translateZ={6}
-                  >
-                    {metric.subLabel}
-                  </CardItem>
-                </CardBody>
-              </CardContainer>
-            ))}
-          </section>
+        <aside className="readout rise" style={{ "--d": "200ms" }} aria-label="Live node readout">
+          <div className="readout__head">
+            <span className="panel__title">Live readout</span>
+            <span className={`badge badge--${status.type}`}>{status.label}</span>
+          </div>
+
+          <div className="readout__row">
+            <span className="stat__label">Node</span>
+            <span className="readout__value">{LANDING_NODE}</span>
+            <span className={`badge badge--${nodeStatus}`}>{nodeStatus}</span>
+          </div>
+
+          <div className="readout__row">
+            <span className="stat__label">CPU</span>
+            <span className="readout__value">{formatPercent(stats.cpuPercent)}</span>
+            <span className="bar" style={{ "--w": `${stats.cpuPercent ?? 0}%`, "--c": "var(--accent)" }}>
+              <i />
+            </span>
+          </div>
+
+          <div className="readout__row">
+            <span className="stat__label">Memory</span>
+            <span className="readout__value">{formatPercent(stats.memPercent)}</span>
+            <span className="readout__meta">
+              {formatGigabytes(stats.memUsed ?? NaN)} / {formatGigabytes(stats.memTotal ?? NaN)}
+            </span>
+            <span className="bar" style={{ "--w": `${stats.memPercent ?? 0}%`, "--c": "var(--live)" }}>
+              <i />
+            </span>
+          </div>
+
+          <div className="readout__row">
+            <span className="stat__label">Uptime</span>
+            <span className="readout__value">{uptimeText}</span>
+            <span className="readout__meta">since last reboot</span>
+          </div>
         </aside>
-      </div>
-    </WavyBackground>
+      </section>
+
+      <ol className="features">
+        {features.map((feature, index) => (
+          <li key={feature.title} className="feature rise" style={{ "--d": `${460 + index * 80}ms` }}>
+            <span className="feature__index">0{index + 1}</span>
+            <h3>{feature.title}</h3>
+            <p>{feature.copy}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 

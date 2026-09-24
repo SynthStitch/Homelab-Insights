@@ -1,63 +1,53 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE?.replace(/\/$/, "") || "";
-const CHAT_ENDPOINT = API_BASE ? `${API_BASE}/api/assistant/chat` : "/api/assistant/chat"; // server route
+const CHAT_ENDPOINT = `${API_BASE}/api/assistant/chat`;
 
 const initialGreeting = {
   role: "assistant",
-  content: "Hi! I'm the Homelab Insights AI assistant. Ask me about node health, VM metrics, or upcoming alerts.",
+  content: "Ask me about node health, VM metrics, or what changed recently.",
 };
 
-function MessageBubble({ role, content }) {
-  const formatBlocks = (text) => {
-    if (!text) return [];
-    const lines = text.split(/\r?\n/).map((l) => l.trim());
-    const blocks = [];
-    let list = [];
-    for (const line of lines) {
-      if (!line) continue;
-      if (line.startsWith("- ")) {
-        list.push(line.slice(2));
-      } else {
-        if (list.length) {
-          blocks.push({ type: "list", items: list });
-          list = [];
-        }
-        blocks.push({ type: "p", text: line });
-      }
+function formatBlocks(text) {
+  if (!text) return [];
+  const blocks = [];
+  let list = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith("- ")) {
+      list.push(line.slice(2));
+      continue;
     }
     if (list.length) {
       blocks.push({ type: "list", items: list });
+      list = [];
     }
-    return blocks;
-  };
+    blocks.push({ type: "p", text: line });
+  }
+  if (list.length) blocks.push({ type: "list", items: list });
+  return blocks;
+}
 
+function MessageBubble({ role, content }) {
   const blocks = formatBlocks(content);
-
   return (
-    <div className={`assistant-message assistant-message--${role}`}>
-      <div className="assistant-message__body">
-        {blocks.length === 0 ? (
-          content
-        ) : (
-          blocks.map((block, idx) => {
-            if (block.type === "list") {
-              return (
-                <ul key={`block-${idx}`} className="assistant-message__list">
-                  {block.items.map((item, liIdx) => (
-                    <li key={`li-${idx}-${liIdx}`}>{item}</li>
+    <div className={`msg msg--${role}`}>
+      <div className="msg__bubble">
+        {blocks.length === 0
+          ? content
+          : blocks.map((block, idx) =>
+              block.type === "list" ? (
+                <ul key={idx}>
+                  {block.items.map((item, i) => (
+                    <li key={i}>{item}</li>
                   ))}
                 </ul>
-              );
-            }
-            return (
-              <p key={`block-${idx}`} className="assistant-message__paragraph">
-                {block.text}
-              </p>
-            );
-          })
-        )}
+              ) : (
+                <p key={idx}>{block.text}</p>
+              ),
+            )}
       </div>
     </div>
   );
@@ -72,10 +62,10 @@ export default function AssistantChat() {
   const [error, setError] = useState("");
   const scrollRef = useRef(null);
 
-  const authHeader = useMemo(() => {
-    if (!auth?.token) return {};
-    return { Authorization: `Bearer ${auth.token}` };
-  }, [auth]);
+  const authHeader = useMemo(
+    () => (auth?.token ? { Authorization: `Bearer ${auth.token}` } : {}),
+    [auth],
+  );
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -83,9 +73,7 @@ export default function AssistantChat() {
     }
   }, [messages, isOpen]);
 
-  if (!auth?.token) {
-    return null;
-  }
+  if (!auth?.token) return null;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -100,16 +88,10 @@ export default function AssistantChat() {
     try {
       const response = await fetch(CHAT_ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader,
-        },
+        headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({ message: question }),
       });
-
-      if (!response.ok) {
-        throw new Error("Assistant request failed");
-      }
+      if (!response.ok) throw new Error("Assistant request failed");
       const data = await response.json();
       setMessages((prev) => [
         ...prev,
@@ -117,61 +99,59 @@ export default function AssistantChat() {
       ]);
     } catch (err) {
       console.error(err);
-      setError("Unable to reach the AI assistant. Please try again.");
+      setError("Unable to reach the assistant. Try again.");
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <div className={`assistant-shell ${isOpen ? "assistant-shell--open" : ""}`}>
-      {isOpen && (
-        <div className="assistant-panel">
-          <div className="assistant-panel__header">
+    <div className="assistant">
+      {isOpen ? (
+        <div className="assistant__panel" role="dialog" aria-label="AI copilot">
+          <div className="assistant__head">
             <div>
-              <p className="assistant-panel__title">AI Ops Copilot</p>
-              <p className="assistant-panel__subtitle">Powered by GPT-5 mini</p>
+              <span className="panel__title">Ops copilot</span>
+              <p className="assistant__sub">grounded in recent snapshots</p>
             </div>
             <button
               type="button"
-              className="assistant-panel__close"
+              className="assistant__close"
               onClick={() => setIsOpen(false)}
-              aria-label="Close AI panel"
+              aria-label="Close copilot"
             >
               ×
             </button>
           </div>
-          <div className="assistant-panel__body" ref={scrollRef}>
+          <div className="assistant__body" ref={scrollRef}>
             {messages.map((message, index) => (
-              <MessageBubble key={`msg-${index}-${message.role}`} role={message.role} content={message.content} />
+              <MessageBubble key={index} role={message.role} content={message.content} />
             ))}
-            {pending ? <p className="assistant-panel__typing">Assistant is thinking…</p> : null}
-            {error ? <p className="assistant-panel__error">{error}</p> : null}
+            {pending ? <p className="assistant__note">thinking…</p> : null}
+            {error ? <p className="assistant__note assistant__note--error">{error}</p> : null}
           </div>
-          <form className="assistant-panel__form" onSubmit={handleSubmit}>
+          <form className="assistant__form" onSubmit={handleSubmit}>
             <input
-              className="assistant-input"
               placeholder="Ask about nodes, VMs, alerts…"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               disabled={pending}
             />
-            <button type="submit" className="assistant-send" disabled={pending || !inputValue.trim()}>
+            <button type="submit" className="btn btn--primary btn--sm" disabled={pending || !inputValue.trim()}>
               Send
             </button>
           </form>
         </div>
-      )}
+      ) : null}
 
       <button
         type="button"
-        className="assistant-toggle"
+        className="btn btn--primary assistant__toggle"
         onClick={() => setIsOpen((prev) => !prev)}
-        aria-label={isOpen ? "Hide AI assistant" : "Show AI assistant"}
+        aria-expanded={isOpen}
       >
-        {isOpen ? "Close" : "Ask AI"}
+        {isOpen ? "Close" : "Ask copilot"}
       </button>
     </div>
   );
 }
-

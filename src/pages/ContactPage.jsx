@@ -2,42 +2,44 @@ import "./InfoPages.css";
 
 function ContactPage() {
   return (
-    <div className="info-page">
+    <div className="page">
       <header className="info-hero">
-        <p className="eyebrow">Contact</p>
-        <h1>Get in touch</h1>
-        <p className="lede">
-          Have questions about setup, logs/metrics pipelines, or feature ideas?
-          Reach out below.
-        </p>
+        <p className="eyebrow">contact</p>
+        <h1>Get in touch.</h1>
+        <p className="lede">Questions about setup, the logs and metrics pipelines, or feature ideas.</p>
       </header>
 
-      <section className="info-card contact-card">
-        <h3>Preferred channels</h3>
+      <section className="panel contact-card rise">
+        <div className="panel__head">
+          <span className="panel__title">Channels</span>
+        </div>
         <ul className="contact-list">
           <li>
-            <strong>Email:</strong> dtrevino2237@gmail.com
+            <strong>Email</strong>
+            <span>dtrevino2237@gmail.com</span>
           </li>
           <li>
-            <strong>Issues:</strong>{" "}
-            <a
-              href="https://github.com/SynthStitch/Homelab-Insights"
-              target="_blank"
-              rel="noreferrer"
-              className="contact-link"
-            >
-              GitHub repo
-            </a>{" "}
-            for bugs/requests
+            <strong>Issues</strong>
+            <span>
+              <a
+                href="https://github.com/SynthStitch/Homelab-Insights"
+                target="_blank"
+                rel="noreferrer"
+                className="contact-link"
+              >
+                GitHub repo
+              </a>{" "}
+              for bugs and requests
+            </span>
           </li>
           <li>
-            <strong>Logs/metrics help:</strong> Share your compose overrides
-            (without secrets) for quick review
+            <strong>Pipelines</strong>
+            <span>Share your compose overrides, without secrets, for a quick review.</span>
           </li>
         </ul>
         <p className="fine-print">
-          We keep all configuration and log samples private. For production
-          environments, redact hostnames/IPs before sharing.
+          Configuration and log samples stay private. For production environments, redact hostnames
+          and IPs before sharing.
         </p>
       </section>
     </div>

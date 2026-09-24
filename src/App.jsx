@@ -1,26 +1,24 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import SignInPage from "./pages/SignInPage";
-import DashboardPage from "./pages/DashboardPage";
-import AdminPage from "./pages/AdminPage";
+// ponytail: lazy so the landing page never downloads three/echarts
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 import LearnPage from "./pages/LearnPage";
 import ContactPage from "./pages/ContactPage";
-import { useLocation } from "react-router-dom";
 import RequireAuth from "./components/RequireAuth.jsx";
 import AssistantChat from "./components/AssistantChat.jsx";
+import Navbar from "./components/Navbar.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
-import ResizableNavbar from "./components/ui/ResizableNavbar.jsx";
 import "./App.css";
 
 function AppShell() {
   const { auth, logout } = useAuth();
-  const location = useLocation();
-  const path = location.pathname || "/";
-  const peekNav = path.startsWith("/dashboard") || path.startsWith("/admin");
 
   const navItems = [
-    { name: "Landing", link: "/" },
-    { name: "Learn More", link: "/overview" },
+    { name: "Home", link: "/" },
+    { name: "How it works", link: "/overview" },
     { name: "Contact", link: "/contact" },
   ];
   if (auth?.token) {
@@ -32,18 +30,20 @@ function AppShell() {
 
   return (
     <div className="app-shell">
-      <ResizableNavbar
+      <Navbar
         items={navItems}
         isAuthed={Boolean(auth?.token)}
+        username={auth?.payload?.username ?? auth?.payload?.sub}
         onLogout={logout}
-        peek={peekNav}
       />
       <main className="app-content">
+        <Suspense fallback={<div className="page"><p className="eyebrow">loading</p></div>}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/overview" element={<LearnPage />} />
           <Route path="/learn" element={<Navigate to="/overview" replace />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/sign-in" element={<SignInPage />} />
           <Route
             path="/dashboard"
             element={
@@ -52,15 +52,7 @@ function AppShell() {
               </RequireAuth>
             }
           />
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route
-            path="/users"
-            element={
-              <RequireAuth role="admin">
-                <AdminPage />
-              </RequireAuth>
-            }
-          />
+          <Route path="/users" element={<Navigate to="/admin" replace />} />
           <Route
             path="/admin"
             element={
@@ -70,6 +62,7 @@ function AppShell() {
             }
           />
         </Routes>
+        </Suspense>
       </main>
       <AssistantChat />
     </div>

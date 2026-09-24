@@ -8,7 +8,7 @@ const BAR_WIDTH = 0.35;
 const HEIGHT_SCALE = 0.03;
 const AXIS_TICKS = [0, 25, 50, 75, 100];
 
-function ThreeMetricChart({ data = [], color = "#60a5fa", interactive = true }) {
+function ThreeMetricChart({ data = [], color = "#facc15", interactive = true }) {
   const wrapperRef = useRef(null);
   const canvasRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -28,7 +28,7 @@ function ThreeMetricChart({ data = [], color = "#60a5fa", interactive = true }) 
     if (!wrapper || !canvasHost) return undefined;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b172a);
+    scene.background = new THREE.Color(0x0b1020);
 
     const width = wrapper.clientWidth || 400;
     const height = wrapper.clientHeight || 300;
@@ -57,12 +57,12 @@ function ThreeMetricChart({ data = [], color = "#60a5fa", interactive = true }) 
     const ambient = new THREE.AmbientLight(0xffffff, 0.72);
     const keyLight = new THREE.DirectionalLight(0xffffff, 1);
     keyLight.position.set(4, 6, 6);
-    const rimLight = new THREE.DirectionalLight(0x7dd3fc, 0.45);
+    const rimLight = new THREE.DirectionalLight(0x2dd4bf, 0.35);
     rimLight.position.set(-4, 4, -6);
 
     scene.add(ambient, keyLight, rimLight);
 
-    const grid = new THREE.GridHelper(12, 12, 0x1f2937, 0x1f2937);
+    const grid = new THREE.GridHelper(12, 12, 0x1e2740, 0x1e2740);
     grid.position.y = -0.5;
     scene.add(grid);
 
@@ -71,7 +71,7 @@ function ThreeMetricChart({ data = [], color = "#60a5fa", interactive = true }) 
       color: initialColorRef.current,
       metalness: 0.25,
       roughness: 0.6,
-      emissive: 0x0b1a2c,
+      emissive: 0x1a1400,
     });
 
     const instancedMesh = new THREE.InstancedMesh(
@@ -89,7 +89,7 @@ function ThreeMetricChart({ data = [], color = "#60a5fa", interactive = true }) 
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(BAR_COUNT * BAR_SPACING + 0.6, 0.06, 2),
       new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
+        color: 0x0f1526,
         transparent: true,
         opacity: 0.85,
       })

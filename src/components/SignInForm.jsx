@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import GlowInput from "./ui/GlowInput.jsx";
+import Field from "./Field.jsx";
 
 const API_BASE =
   typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE
@@ -37,9 +37,7 @@ function SignInForm() {
     try {
       const response = await fetch(`${API_BASE}/api/auth/signin`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: form.identifier, password: form.password }),
       });
 
@@ -52,11 +50,9 @@ function SignInForm() {
       }
 
       login(data.token);
-      setStatus({ message: "Signed in successfully.", variant: "success" });
+      setStatus({ message: "Signed in.", variant: "success" });
       const redirectTo = location.state?.from?.pathname ?? "/dashboard";
-      setTimeout(() => {
-        navigate(redirectTo, { replace: true });
-      }, 200);
+      setTimeout(() => navigate(redirectTo, { replace: true }), 200);
     } catch (err) {
       setStatus({ message: err.message || "Sign in failed", variant: "error" });
     } finally {
@@ -65,36 +61,36 @@ function SignInForm() {
   };
 
   return (
-    <>
-      <form className="sign-in-form" onSubmit={handleSubmit}>
-        <GlowInput
-          label="Username or Email"
-          type="text"
-          name="identifier"
-          value={form.identifier}
-          onChange={handleChange}
-          placeholder="admin or admin@homelab.local"
-          autoComplete="username"
-          required
-        />
-        <GlowInput
-          label="Password"
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-          placeholder="********"
-          autoComplete="current-password"
-          required
-        />
-        <button type="submit" className="submit-button" disabled={busy}>
-          {busy ? "Signing In…" : "Sign In"}
-        </button>
-      </form>
-      {status.message && (
-        <p className={`status-message status-${status.variant}`}>{status.message}</p>
-      )}
-    </>
+    <form className="signin__form" onSubmit={handleSubmit}>
+      <Field
+        label="Username or email"
+        type="text"
+        name="identifier"
+        value={form.identifier}
+        onChange={handleChange}
+        placeholder="admin"
+        autoComplete="username"
+        required
+      />
+      <Field
+        label="Password"
+        type="password"
+        name="password"
+        value={form.password}
+        onChange={handleChange}
+        placeholder="••••••••"
+        autoComplete="current-password"
+        required
+      />
+      <button type="submit" className="btn btn--primary" disabled={busy}>
+        {busy ? "Signing in…" : "Sign in"}
+      </button>
+      {status.message ? (
+        <p className={`status-text status-text--${status.variant}`} role="status">
+          {status.message}
+        </p>
+      ) : null}
+    </form>
   );
 }
 

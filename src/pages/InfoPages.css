@@ -1,34 +1,17 @@
-.info-page {
-  width: min(1100px, 95vw);
-  margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 4rem) 0 clamp(3rem, 7vw, 4.5rem);
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
 .info-hero {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.7rem;
+  max-width: 760px;
 }
 
 .info-hero h1 {
-  margin: 0;
-  font-size: clamp(2.2rem, 5vw, 2.9rem);
-  color: #facc15;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  letter-spacing: -0.035em;
 }
 
 .info-hero .lede {
-  color: rgba(226, 232, 240, 0.9);
-  max-width: 720px;
-}
-
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.8rem;
-  color: rgba(226, 232, 240, 0.7);
-  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
 }
 
 .info-grid {
@@ -37,21 +20,13 @@
   gap: 1rem;
 }
 
-.info-card {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.6));
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 14px;
-  padding: 1.2rem 1.25rem;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
-}
-
 .info-card h3 {
-  margin: 0 0 0.4rem;
+  font-size: 1.15rem;
 }
 
-.info-card p {
-  margin: 0.25rem 0 0.6rem;
-  color: rgba(226, 232, 240, 0.9);
+.info-card > p {
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .pill-row {
@@ -61,44 +36,62 @@
 }
 
 .pill {
-  background: rgba(59, 130, 246, 0.15);
-  color: #bfdbfe;
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  padding: 0.25rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--live);
+  background: rgba(45, 212, 191, 0.1);
+  border: 1px solid rgba(45, 212, 191, 0.25);
+  padding: 0.22rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.85rem;
 }
 
-.info-faq {
-  display: grid;
-  gap: 1rem;
-}
-
-.info-faq h2 {
-  margin: 0;
+.pill::before {
+  content: "✓ ";
 }
 
 .faq-list {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .faq-item {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 12px;
-  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(7, 11, 20, 0.5);
+  padding: 0 1rem;
 }
 
 .faq-item summary {
   cursor: pointer;
+  list-style: none;
+  padding: 0.9rem 0;
   font-weight: 600;
-  color: #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "+";
+  font-family: var(--font-mono);
+  color: var(--accent);
+  transition: transform 0.2s var(--ease);
+}
+
+.faq-item[open] summary::after {
+  transform: rotate(45deg);
 }
 
 .faq-item p {
-  margin: 0.4rem 0 0;
-  color: rgba(226, 232, 240, 0.85);
+  padding: 0 0 1rem;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .contact-card {
@@ -108,21 +101,47 @@
 .contact-list {
   list-style: none;
   padding: 0;
-  margin: 0.5rem 0;
+  margin: 0;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.75rem;
+}
+
+.contact-list li {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+
+.contact-list li:last-child {
+  border-bottom: 0;
 }
 
 .contact-list strong {
-  color: #facc15;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .contact-link {
-  color: #93c5fd;
+  color: var(--info);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .fine-print {
-  color: rgba(226, 232, 240, 0.6);
-  font-size: 0.9rem;
+  color: var(--faint);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 560px) {
+  .contact-list li {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
 }

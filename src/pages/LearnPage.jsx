@@ -2,16 +2,16 @@ import "./InfoPages.css";
 
 const faqs = [
   {
-    q: "What data do we collect?",
-    a: "Metrics, logs, and snapshots you configure (Proxmox, Docker, OTEL). Everything stays in your environment by default.",
+    q: "What data does it collect?",
+    a: "Metrics and snapshots from the sources you configure: Proxmox nodes and VMs today, plus Docker, OTEL and Loki via the compose stacks. Everything stays in your environment.",
   },
   {
     q: "Do I need Proxmox?",
-    a: "No. You can start with Docker-only: run the Loki/Promtail stack for logs and the OTEL collector for metrics.",
+    a: "No. You can start Docker-only: run the Loki/Promtail stack for logs and the OTEL collector for metrics.",
   },
   {
-    q: "Can I extend sources?",
-    a: "Yes. Add more OTEL receivers or Promtail scrape targets to bring in Kubernetes, bare metal, or cloud VMs.",
+    q: "Can I add more sources?",
+    a: "Yes. Add OTEL receivers or Promtail scrape targets to bring in Kubernetes, bare metal, or cloud VMs.",
   },
 ];
 
@@ -19,35 +19,38 @@ const stories = [
   {
     title: "As a homelab admin",
     body: "I want unified metrics from Proxmox and Docker so I can see CPU, memory, and uptime without jumping across UIs.",
-    done: ["Proxmox polling", "Docker compose for Loki/Promtail", "Dashboard visualizations"],
+    done: ["Proxmox polling", "Loki/Promtail compose", "Dashboard charts"],
   },
   {
-    title: "As a troubleshooting user",
-    body: "I want logs searchable in one place so I can quickly correlate spikes to container restarts or VM events.",
-    done: ["Loki + Promtail compose", "Alert tester UI", "AI assistant context on recent snapshots/logs"],
+    title: "As a troubleshooter",
+    body: "I want logs searchable in one place so I can correlate spikes to container restarts or VM events.",
+    done: ["Loki + Promtail", "Alert tester", "Copilot with snapshot context"],
   },
   {
-    title: "As an admin",
-    body: "I want RBAC and node CRUD so only authorized users can add/remove telemetry sources.",
-    done: ["JWT auth with roles", "Admin console for users/nodes", "API ping-before-save for new nodes"],
+    title: "As the owner",
+    body: "I want role-based access and node management so only authorized users can add or remove telemetry sources.",
+    done: ["JWT auth with roles", "Admin console", "Ping-before-save for nodes"],
   },
 ];
 
 function LearnPage() {
   return (
-    <div className="info-page">
+    <div className="page">
       <header className="info-hero">
-        <p className="eyebrow">Learn more</p>
-        <h1>Homelab Insights overview</h1>
+        <p className="eyebrow">how it works</p>
+        <h1>Metrics, logs, alerts and a copilot, in one place.</h1>
         <p className="lede">
-          How metrics, logs, alerts, and AI assistant come together. Use this as a quick tour or to brief
-          stakeholders.
+          A quick tour of what Homelab Insights does and who it is for. Use it to brief anyone you
+          share the lab with.
         </p>
       </header>
 
       <section className="info-grid">
-        {stories.map((story) => (
-          <article key={story.title} className="info-card">
+        {stories.map((story, index) => (
+          <article key={story.title} className="panel info-card rise" style={{ "--d": `${index * 80}ms` }}>
+            <div className="panel__head">
+              <span className="panel__title">Story 0{index + 1}</span>
+            </div>
             <h3>{story.title}</h3>
             <p>{story.body}</p>
             <div className="pill-row">
@@ -61,8 +64,10 @@ function LearnPage() {
         ))}
       </section>
 
-      <section className="info-faq">
-        <h2>FAQ</h2>
+      <section className="panel">
+        <div className="panel__head">
+          <span className="panel__title">FAQ</span>
+        </div>
         <div className="faq-list">
           {faqs.map((faq) => (
             <details key={faq.q} className="faq-item">

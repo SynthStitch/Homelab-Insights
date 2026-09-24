@@ -18,7 +18,7 @@ function getStoredToken() {
 
 function buildUrl(path, params = {}) {
   const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-  const baseUrl = `${API_BASE}/`;
+  const baseUrl = `${API_BASE || window.location.origin}/`;
   const url = new URL(normalizedPath, baseUrl);
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
