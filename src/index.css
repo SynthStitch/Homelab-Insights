@@ -212,6 +212,81 @@ textarea {
   color: inherit;
 }
 
+/* ---------- scrollbars ---------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* panels with their own scroll areas: hairline thumb, hidden until hover */
+.table-wrap,
+.legend__scroll,
+.lab__body,
+.assistant__body {
+  scrollbar-color: transparent transparent;
+}
+
+.table-wrap:hover,
+.legend__scroll:hover,
+.lab__body:hover,
+.assistant__body:hover {
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.table-wrap::-webkit-scrollbar,
+.legend__scroll::-webkit-scrollbar,
+.lab__body::-webkit-scrollbar,
+.assistant__body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb,
+.legend__scroll::-webkit-scrollbar-thumb,
+.lab__body::-webkit-scrollbar-thumb,
+.assistant__body::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 0;
+}
+
+.table-wrap:hover::-webkit-scrollbar-thumb,
+.legend__scroll:hover::-webkit-scrollbar-thumb,
+.lab__body:hover::-webkit-scrollbar-thumb,
+.assistant__body:hover::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+}
+
+[data-theme="magi"] ::-webkit-scrollbar-thumb,
+[data-theme="wire"] ::-webkit-scrollbar-thumb {
+  border-radius: 0;
+}
+
 ::selection {
   background: var(--accent);
   color: var(--accent-ink);
