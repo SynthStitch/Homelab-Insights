@@ -38,7 +38,13 @@
   padding-bottom: 0.55rem;
 }
 
-/* grid */
+.toolbar__seg {
+  margin-bottom: 0.45rem;
+}
+
+/* ---------- layouts ----------
+   Every panel spans 12 by default (phones, and the "stack" layout on small
+   screens). Wider breakpoints assign columns per layout. */
 
 .dash__grid {
   display: grid;
@@ -46,24 +52,97 @@
   gap: 1rem;
 }
 
-.span-12 {
+.dash__grid > .panel {
   grid-column: span 12;
-}
-.span-8 {
-  grid-column: span 8;
-}
-.span-6 {
-  grid-column: span 6;
-}
-.span-4 {
-  grid-column: span 4;
+  min-width: 0;
 }
 
-@media (max-width: 900px) {
-  .span-8,
-  .span-6,
-  .span-4 {
-    grid-column: span 12;
+/* stack: one column, charts get generous height */
+@media (min-width: 900px) {
+  .dash[data-layout="stack"] .panel--cpu {
+    grid-column: span 8;
+  }
+  .dash[data-layout="stack"] .panel--mem {
+    grid-column: span 4;
+  }
+  .dash[data-layout="stack"] .panel--net,
+  .dash[data-layout="stack"] .panel--disk {
+    grid-column: span 6;
+  }
+}
+
+/* grid: dense, full width, Grafana-style */
+.dash[data-layout="grid"] {
+  --page-w: 1800px;
+}
+
+@media (min-width: 1100px) {
+  .dash[data-layout="grid"] .panel--overview {
+    order: 1;
+  }
+  .dash[data-layout="grid"] .history {
+    order: 2;
+    grid-column: span 8;
+  }
+  .dash[data-layout="grid"] .fleet {
+    order: 3;
+    grid-column: span 4;
+  }
+  .dash[data-layout="grid"] .panel--cpu,
+  .dash[data-layout="grid"] .panel--net,
+  .dash[data-layout="grid"] .panel--disk {
+    order: 4;
+    grid-column: span 4;
+  }
+  .dash[data-layout="grid"] .panel--mem {
+    order: 5;
+    grid-column: span 4;
+  }
+  .dash[data-layout="grid"] .panel--3d {
+    order: 6;
+    grid-column: span 8;
+  }
+
+  /* narrow fleet: matrix above the groups, smaller */
+  .dash[data-layout="grid"] .fleet__body {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .dash[data-layout="grid"] .matrix {
+    padding: 0.75rem 0 0 0.5rem;
+  }
+  .dash[data-layout="grid"] .matrix__stage {
+    height: 150px;
+    transform: perspective(900px) rotateY(26deg);
+  }
+  .dash[data-layout="grid"] .matrix__caption {
+    margin-top: 1rem;
+  }
+  .dash[data-layout="grid"] .fleet__group {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+    padding: 0.7rem 0.75rem;
+  }
+  .dash[data-layout="grid"] .chip {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.68rem;
+  }
+
+  .dash[data-layout="grid"] .history__chart {
+    height: 380px;
+  }
+  .dash[data-layout="grid"] .chart,
+  .dash[data-layout="grid"] .chart--gauge {
+    height: 220px;
+  }
+  .dash[data-layout="grid"] .three-chart {
+    height: 240px;
+  }
+}
+
+@media (min-width: 1500px) {
+  .dash[data-layout="grid"] .stats {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 

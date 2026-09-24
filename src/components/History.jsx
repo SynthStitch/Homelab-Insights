@@ -160,7 +160,7 @@ export default function History({ node, demo = false }) {
   const guestCount = data?.guests?.length ?? 0;
 
   return (
-    <section className="panel span-12 history">
+    <section className="panel history">
       <div className="panel__head">
         <span className="panel__title">History</span>
         <div className="history__controls">

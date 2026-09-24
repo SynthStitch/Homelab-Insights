@@ -215,6 +215,14 @@ function DashboardPage() {
   const [demoMode, setDemoMode] = useState(false);
   const [intervalMs, setIntervalMs] = useState(DEFAULT_INTERVAL);
   const [showThreeD, setShowThreeD] = useState(true);
+  // ponytail: two layouts, css does the work. "grid" = dense Grafana-style, "stack" = one column.
+  const [layout, setLayout] = useState(() => {
+    try {
+      return localStorage.getItem("homelab-layout") || "grid";
+    } catch {
+      return "grid";
+    }
+  });
   const [lastUpdated, setLastUpdated] = useState(null);
   const [status, setStatus] = useState({ type: "loading", message: "Connecting to Proxmox…" });
   const [nodeSummary, setNodeSummary] = useState(null);
@@ -223,6 +231,17 @@ function DashboardPage() {
   const [selectedNode, setSelectedNode] = useState(PROXMOX_NODE);
   const [selectedVmid, setSelectedVmid] = useState(PROXMOX_VMID);
   const { auth } = useAuth();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("homelab-layout", layout);
+    } catch {
+      /* ignore */
+    }
+    // Panels change width; let every chart re-measure after the CSS settles.
+    const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 60);
+    return () => clearTimeout(t);
+  }, [layout]);
 
   useEffect(() => {
     if (!cpuChart.current && cpuRef.current) cpuChart.current = echarts.init(cpuRef.current);
@@ -505,7 +524,7 @@ function DashboardPage() {
   const nodeStatus = (nodeSummary?.status || "unknown").toLowerCase();
 
   return (
-    <div className="page dash">
+    <div className="page dash" data-layout={layout}>
       <header className="page-head">
         <div>
           <p className="eyebrow">dashboard</p>
@@ -536,6 +555,16 @@ function DashboardPage() {
             step={1000}
             onChange={(e) => setIntervalMs(Math.max(1000, Number(e.target.value) || DEFAULT_INTERVAL))}
           />
+          <div className="seg toolbar__seg" role="tablist" aria-label="Layout">
+            {[
+              ["grid", "Grid"],
+              ["stack", "Stack"],
+            ].map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={layout === id} className={`seg__btn${layout === id ? " is-active" : ""}`} onClick={() => setLayout(id)}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="toolbar__toggles">
             <label className="check">
               <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
@@ -550,7 +579,7 @@ function DashboardPage() {
       </header>
 
       <div className="dash__grid">
-        <section className="panel span-12">
+        <section className="panel panel--overview">
           <div className="panel__head">
             <span className="panel__title">Node overview</span>
             <span className="panel__meta">
@@ -630,7 +659,7 @@ function DashboardPage() {
 
         <History node={selectedNode} demo={demoMode} />
 
-        <section className="panel span-8">
+        <section className="panel panel--cpu">
           <div className="panel__head">
             <span className="panel__title">CPU utilisation</span>
             <span className="panel__meta">last {SAMPLE_SIZE} samples</span>
@@ -641,7 +670,7 @@ function DashboardPage() {
           </div>
         </section>
 
-        <section className="panel span-4">
+        <section className="panel panel--mem">
           <div className="panel__head">
             <span className="panel__title">Memory</span>
             <span className="panel__meta">host</span>
@@ -649,7 +678,7 @@ function DashboardPage() {
           <div ref={memRef} className="chart chart--gauge" />
         </section>
 
-        <section className="panel span-6">
+        <section className="panel panel--net">
           <div className="panel__head">
             <span className="panel__title">Network</span>
             <span className="panel__meta">Kb/s</span>
@@ -660,7 +689,7 @@ function DashboardPage() {
           </div>
         </section>
 
-        <section className="panel span-6">
+        <section className="panel panel--disk">
           <div className="panel__head">
             <span className="panel__title">Disk</span>
             <span className="panel__meta">MB/s</span>
@@ -672,7 +701,7 @@ function DashboardPage() {
         </section>
 
         {showThreeD ? (
-          <section className="panel span-12">
+          <section className="panel panel--3d">
             <div className="panel__head">
               <span className="panel__title">CPU history · 3D</span>
               <span className="panel__meta">drag to orbit</span>

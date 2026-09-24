@@ -126,7 +126,7 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
   };
 
   return (
-    <section className="panel span-12 fleet">
+    <section className="panel fleet">
       <div className="panel__head">
         <span className="panel__title">Fleet</span>
         <div className="fleet__modes" role="tablist" aria-label="Group guests by">

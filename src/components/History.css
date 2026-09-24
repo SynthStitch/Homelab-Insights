@@ -4,39 +4,6 @@
   gap: 0.5rem 1rem;
 }
 
-.seg {
-  display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.seg__btn {
-  padding: 0.3rem 0.65rem;
-  border: 0;
-  border-right: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.seg__btn:last-child {
-  border-right: 0;
-}
-
-.seg__btn:hover {
-  color: var(--text);
-}
-
-.seg__btn.is-active {
-  color: var(--accent-ink);
-  background: var(--accent);
-}
-
 .history__meta {
   display: flex;
   flex-wrap: wrap;

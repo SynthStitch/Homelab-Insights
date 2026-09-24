@@ -25,7 +25,7 @@
 }
 
 .nav__inner {
-  width: min(var(--page-w), calc(100vw - 2 * var(--page-x)));
+  width: min(1800px, calc(100vw - 2 * var(--page-x)));
   margin: 0 auto;
   display: flex;
   align-items: center;
