@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-/* eslint-env node */
-/* global process */
 // Inserts synthetic high-load snapshots into MongoDB for demo purposes.
 import dotenv from "dotenv";
 import { connectMongo, disconnectMongo } from "../src/db/mongo.js";
