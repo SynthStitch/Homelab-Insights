@@ -11,7 +11,10 @@ services:
     ports:
       - "4100:4100"
     env_file: .env
+    volumes:
+      - ./certs:/certs:ro   # drop Proxmox CA(s) in ./certs/proxmox-ca.pem to verify TLS
     environment:
+      NODE_EXTRA_CA_CERTS: /certs/proxmox-ca.pem
       MONGODB_URI: mongodb://mongo:27017
       MONGODB_DB_NAME: homelab_insights
       OTEL_SDK_DISABLED: "true"   # no collector in this stack; drop this line if you run docker-compose.observability.yml
