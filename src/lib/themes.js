@@ -9,10 +9,13 @@ export const FONT_STACKS = {
   sharetech: '"Share Tech Mono", "JetBrains Mono", ui-monospace, monospace',
   barlow: '"Barlow Condensed", "Arial Narrow", sans-serif',
   plexmono: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+  plexsans: '"IBM Plex Sans", "Instrument Sans", system-ui, sans-serif',
+  jura: '"Jura", "IBM Plex Sans", system-ui, sans-serif',
   system: 'system-ui, -apple-system, "Segoe UI", sans-serif',
 };
 
 export const FX_OPTIONS = [
+  ["terrain", "Wireframe terrain"],
   ["glass", "Glass shards"],
   ["crt", "CRT scanlines"],
   ["grid", "Flat grid"],
@@ -101,7 +104,36 @@ const wire = {
   fx: "grid",
 };
 
+// Oblivion: monochrome near-black, light spaced type, wireframe terrain, frosted pills.
+const oblivion = {
+  bg: "#07080a",
+  "bg-elev": "#0b0d10",
+  surface: "#0e1114",
+  "surface-2": "#151a1f",
+  line: "#c7d1dc1f",
+  "line-strong": "#c7d1dc40",
+  text: "#e3e8ee",
+  muted: "#94a0ad",
+  faint: "#5b6672",
+  accent: "#d6dee7",
+  "accent-soft": "#d6dee71a",
+  "accent-ink": "#0b0d10",
+  live: "#a9e3c9",
+  info: "#9cc3e6",
+  violet: "#b9b4e6",
+  warn: "#e6c79c",
+  danger: "#e6a1a1",
+  "font-display": FONT_STACKS.jura,
+  "font-body": FONT_STACKS.plexsans,
+  "font-mono": FONT_STACKS.plexmono,
+  radius: "4px",
+  "radius-sm": "3px",
+  glow: "none",
+  fx: "terrain",
+};
+
 export const PRESETS = {
+  oblivion: { label: "Oblivion", vars: oblivion },
   glass: { label: "Glass", vars: glass },
   magi: { label: "MAGI", vars: magi },
   wire: { label: "Wireframe", vars: wire },
@@ -135,7 +167,22 @@ const write = (key, value) => {
 
 export const loadCustomThemes = () => read(CUSTOM_KEY, {});
 export const saveCustomThemes = (themes) => write(CUSTOM_KEY, themes);
-export const loadActive = () => read(ACTIVE_KEY, { id: "glass", overrides: {} });
+const DEFAULT_ID = "oblivion";
+const MIGRATION_KEY = "homelab-theme-migrated-oblivion";
+
+// New visitors get Oblivion. Existing browsers still on untouched Glass are moved once.
+export const loadActive = () => {
+  const active = read(ACTIVE_KEY, { id: DEFAULT_ID, overrides: {} });
+  try {
+    if (!localStorage.getItem(MIGRATION_KEY)) {
+      localStorage.setItem(MIGRATION_KEY, "1");
+      if (active.id === "glass" && !Object.keys(active.overrides ?? {}).length) return { id: DEFAULT_ID, overrides: {} };
+    }
+  } catch {
+    /* ignore */
+  }
+  return active;
+};
 export const saveActive = (active) => write(ACTIVE_KEY, active);
 
 /** Resolve an id (preset or custom name) to { base, vars }. */
@@ -143,7 +190,7 @@ export function resolveTheme(id, customs = loadCustomThemes()) {
   if (PRESETS[id]) return { base: id, vars: PRESETS[id].vars };
   const custom = customs[id];
   if (custom) return { base: custom.base || "glass", vars: { ...PRESETS[custom.base || "glass"].vars, ...custom.vars } };
-  return { base: "glass", vars: PRESETS.glass.vars };
+  return { base: "oblivion", vars: PRESETS.oblivion.vars };
 }
 
 /** Push a resolved var map onto <html>. */

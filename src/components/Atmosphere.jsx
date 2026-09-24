@@ -1,4 +1,7 @@
-// Fixed background: color blooms, drifting glass shards, plus-grid, grain.
+import Terrain from "./Terrain.jsx";
+import { useTheme } from "../context/ThemeContext.jsx";
+
+// Fixed background: color blooms, drifting glass shards, plus-grid, grain; or a wireframe terrain.
 // ponytail: pure CSS animation, no rAF loop. Tune SHARDS for composition, not code.
 const SHARDS = [
   { x: -8, y: 58, w: 560, h: 64, r: -38, b: 14, o: 0.55, d: 0 },
@@ -13,12 +16,17 @@ const SHARDS = [
 ];
 
 export default function Atmosphere() {
+  const { vars } = useTheme();
+  const terrain = vars.fx === "terrain";
   return (
     <div className="atmo" aria-hidden="true">
+      {terrain ? <Terrain color={vars.text} /> : null}
       <div className="atmo__bloom atmo__bloom--cool" />
       <div className="atmo__bloom atmo__bloom--warm" />
       <div className="atmo__shards">
-        {SHARDS.map((s, i) => (
+        {terrain
+          ? null
+          : SHARDS.map((s, i) => (
           <i
             key={i}
             style={{

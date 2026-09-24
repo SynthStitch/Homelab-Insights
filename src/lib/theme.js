@@ -3,6 +3,7 @@
 //   glass → smooth lines with soft gradient fills
 //   crt   → stepped phosphor traces with glow, ruler ticks (MAGI)
 //   grid  → thin straight strokes, no fill (wireframe)
+//   terrain → hairline strokes, cool grey palette, dotted grid (Oblivion)
 import { PRESETS } from "./themes.js";
 
 const glassPalette = ["#facc15", "#2dd4bf", "#60a5fa", "#a78bfa", "#fb923c", "#fb7185", "#4ade80", "#f472b6", "#38bdf8", "#e879f9", "#fbbf24", "#34d399"];
@@ -26,20 +27,23 @@ export function buildChartTheme(vars, fx = vars.fx || "glass") {
   };
   const fonts = { mono: vars["font-mono"] };
   const crt = fx === "crt";
-  const wire = fx === "grid";
+  const wire = fx === "grid" || fx === "terrain";
+  const terrain = fx === "terrain";
 
   const seriesPalette = crt
     ? [colors.accent, colors.live, colors.danger, colors.info, colors.warn, colors.violet, "#ffd9b3", "#c8ffd0", "#ff8f7a", "#ffe6a3"]
-    : wire
-      ? ["#ffffff", "#bdbdbd", "#8f8f8f", colors.live, colors.info, colors.violet, colors.warn, colors.danger, "#6e6e6e", "#d0d0d0"]
-      : glassPalette;
+    : terrain
+      ? ["#e3e8ee", "#9cc3e6", "#a9e3c9", "#8a9bb0", "#c9d3dd", "#b9b4e6", "#e6c79c", "#6f8496", "#e6a1a1", "#dfe6ee", "#7fa4c4", "#94a0ad"]
+      : wire
+        ? ["#ffffff", "#bdbdbd", "#8f8f8f", colors.live, colors.info, colors.violet, colors.warn, colors.danger, "#6e6e6e", "#d0d0d0"]
+        : glassPalette;
 
   const axisStyle = {
     axisLine: { lineStyle: { color: colors.line } },
     axisTick: crt ? { show: true, length: 5, lineStyle: { color: colors.line } } : { show: false },
     ...(crt ? { minorTick: { show: true, splitNumber: 5, length: 3, lineStyle: { color: colors.lineSoft } } } : {}),
     axisLabel: { color: colors.faint, fontFamily: fonts.mono, fontSize: 10 },
-    splitLine: { lineStyle: { color: colors.lineSoft, type: crt ? "dotted" : wire ? "solid" : "dashed" } },
+    splitLine: { lineStyle: { color: colors.lineSoft, type: crt || terrain ? "dotted" : wire ? "solid" : "dashed" } },
   };
 
   const legendStyle = {
@@ -64,7 +68,7 @@ export function buildChartTheme(vars, fx = vars.fx || "glass") {
     ...(crt ? { shadowBlur: 10, shadowColor: color } : {}),
   });
 
-  const seriesStyle = crt ? { step: "end", smooth: false } : wire ? { smooth: false } : { smooth: 0.35 };
+  const seriesStyle = crt ? { step: "end", smooth: false } : terrain ? { smooth: 0.15 } : wire ? { smooth: false } : { smooth: 0.35 };
 
   const area = (color) =>
     crt || wire
@@ -87,4 +91,4 @@ export function buildChartTheme(vars, fx = vars.fx || "glass") {
 }
 
 // Static fallback for non-React consumers (three.js scene, tests).
-export const colors = buildChartTheme(PRESETS.glass.vars).colors;
+export const colors = buildChartTheme(PRESETS.oblivion.vars).colors;

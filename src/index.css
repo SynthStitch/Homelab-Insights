@@ -153,6 +153,26 @@ body {
     radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.65));
 }
 
+.atmo__terrain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  mask-image: linear-gradient(180deg, transparent 8%, rgba(0, 0, 0, 0.9) 40%, rgba(0, 0, 0, 1) 70%, rgba(0, 0, 0, 0.55));
+}
+
+[data-fx="terrain"] .atmo__shards,
+[data-fx="terrain"] .atmo__bloom,
+[data-fx="terrain"] .atmo__grain {
+  display: none;
+}
+
+[data-fx="terrain"] .atmo__grid {
+  opacity: 0.32;
+  -webkit-mask-size: 240px 240px, auto;
+  mask-size: 240px 240px, auto;
+}
+
 /* atmosphere modes (html[data-fx] is set by the theme) */
 [data-fx="crt"] .atmo__shards,
 [data-fx="crt"] .atmo__bloom,
@@ -899,6 +919,155 @@ p {
 [data-theme="wire"] .panel__title::before {
   border-radius: 0;
   box-shadow: none;
+}
+
+/* Oblivion: monochrome, light type, frosted pills, registration corners */
+[data-theme="oblivion"] h1,
+[data-theme="oblivion"] h2,
+[data-theme="oblivion"] h3 {
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-theme="oblivion"] .page-head h1 {
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+}
+
+[data-theme="oblivion"] .hero__title {
+  font-weight: 300;
+  font-size: clamp(2.3rem, 5.6vw, 4.4rem);
+  line-height: 1.12;
+  letter-spacing: 0.16em;
+  text-shadow: none;
+}
+
+[data-theme="oblivion"] .hero__title span:first-child {
+  color: var(--faint);
+}
+
+[data-theme="oblivion"] .hero__title span:nth-child(2) {
+  color: var(--muted);
+}
+
+[data-theme="oblivion"] .hero__accent {
+  color: var(--text);
+  text-shadow: none;
+}
+
+[data-theme="oblivion"] .stat__value,
+[data-theme="oblivion"] .readout__value {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="oblivion"] .panel,
+[data-theme="oblivion"] .readout,
+[data-theme="oblivion"] .signin__card,
+[data-theme="oblivion"] .assistant__panel,
+[data-theme="oblivion"] .lab {
+  background: rgba(11, 13, 16, 0.55);
+  border-color: var(--line);
+}
+
+[data-theme="oblivion"] .panel::after {
+  /* registration marks in two corners instead of the glass sheen */
+  background:
+    linear-gradient(var(--line-strong), var(--line-strong)) 0 6px / 13px 1px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) 6px 0 / 1px 13px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) right 0 bottom 6px / 13px 1px no-repeat,
+    linear-gradient(var(--line-strong), var(--line-strong)) right 6px bottom 0 / 1px 13px no-repeat;
+}
+
+[data-theme="oblivion"] .readout::before,
+[data-theme="oblivion"] .signin__card::before {
+  background: linear-gradient(90deg, var(--line-strong), transparent 70%);
+  height: 1px;
+}
+
+[data-theme="oblivion"] .panel__title::before {
+  background: transparent;
+  border: 1px solid var(--accent);
+  box-shadow: none;
+}
+
+[data-theme="oblivion"] .btn,
+[data-theme="oblivion"] .icon-btn,
+[data-theme="oblivion"] .seg {
+  border-radius: 999px;
+}
+
+[data-theme="oblivion"] .btn {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  padding: 0.62rem 1.25rem;
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+}
+
+[data-theme="oblivion"] .btn:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+}
+
+[data-theme="oblivion"] .btn--primary {
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="oblivion"] .btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.12));
+}
+
+[data-theme="oblivion"] .btn--danger {
+  color: var(--danger);
+}
+
+[data-theme="oblivion"] .seg__btn.is-active {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+[data-theme="oblivion"] .badge {
+  border-radius: 2px;
+}
+
+[data-theme="oblivion"] .nav {
+  background: rgba(7, 8, 10, 0.6);
+}
+
+[data-theme="oblivion"] .nav__brand {
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.86rem;
+}
+
+[data-theme="oblivion"] .nav__mark rect {
+  fill: transparent;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+[data-theme="oblivion"] .nav__mark path {
+  stroke: var(--accent);
+}
+
+[data-theme="oblivion"] .eyebrow {
+  letter-spacing: 0.22em;
+}
+
+[data-theme="oblivion"] .chip {
+  border-radius: 2px;
 }
 
 /* ---------- motion ---------- */
