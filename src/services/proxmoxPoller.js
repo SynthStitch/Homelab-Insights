@@ -29,12 +29,13 @@ function extractMetrics(payload) {
 export async function collectSnapshotOnce({
   node = config.proxmox.defaultNode,
   vmid = config.proxmox.defaultVmid,
+  type = "qemu",
   nodeConfig = null,
 } = {}) {
   if (!node || !vmid) {
     throw new Error("collectSnapshotOnce requires node and vmid to be configured.");
   }
-  const payload = await fetchVmStatus({ node, vmid, nodeConfig });
+  const payload = await fetchVmStatus({ node, vmid, type, nodeConfig });
   const metrics = extractMetrics(payload?.data ?? payload);
 
   await ProxmoxSnapshot.create({
@@ -85,23 +86,26 @@ export function startProxmoxPolling({ intervalMs = config.proxmox.pollIntervalMs
           }))
           .filter((t) => t.node && t.nodeConfig?.baseUrl)
           .map(async (t) => {
-            let vmidToUse = t.vmid;
-            if (!vmidToUse) {
-              try {
-                const vmList = await fetchNodeVms({ node: t.node, nodeConfig: t.nodeConfig });
-                const vms = Array.isArray(vmList?.data) ? vmList.data : [];
-                if (vms.length > 0) {
-                  vmidToUse = String(vms[0].id);
-                }
-              } catch (err) {
-                console.error(`Proxmox polling: failed to fetch VMs for node=${t.node}`, err);
+            let vmidToUse = t.vmid ? String(t.vmid) : null;
+            let guestType = "qemu";
+            try {
+              const vmList = await fetchNodeVms({ node: t.node, nodeConfig: t.nodeConfig });
+              const vms = Array.isArray(vmList?.data) ? vmList.data : [];
+              if (!vmidToUse) {
+                // Prefer a running guest so charts have something to show.
+                const pick = vms.find((vm) => vm.status === "running") ?? vms[0];
+                if (pick) vmidToUse = String(pick.vmid);
               }
+              const match = vms.find((vm) => String(vm.vmid) === vmidToUse);
+              if (match?.type === "lxc") guestType = "lxc";
+            } catch (err) {
+              console.error(`Proxmox polling: failed to fetch VMs for node=${t.node}`, err);
             }
             if (!vmidToUse) {
               console.warn(`Proxmox polling skipped: no VMID for node ${t.node}`);
               return;
             }
-            await collectSnapshotOnce({ ...t, vmid: vmidToUse }).catch((err) => {
+            await collectSnapshotOnce({ ...t, vmid: vmidToUse, type: guestType }).catch((err) => {
               console.error(`Proxmox polling error (node=${t.node}, vmid=${vmidToUse})`, err);
             });
           })

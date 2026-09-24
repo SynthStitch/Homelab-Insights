@@ -122,9 +122,10 @@ async function proxmoxGet(path, { signal, node, nodeConfig } = {}) {
   return response.json();
 }
 
-export async function fetchVmStatus({ node, vmid, signal, nodeConfig } = {}) {
+export async function fetchVmStatus({ node, vmid, type = "qemu", signal, nodeConfig } = {}) {
   const resolvedNode = node ?? config.proxmox.defaultNode;
   const resolvedVmid = vmid ?? config.proxmox.defaultVmid;
+  const guestType = type === "lxc" ? "lxc" : "qemu";
 
   if (!resolvedNode || !resolvedVmid) {
     throw new Error(
@@ -132,7 +133,7 @@ export async function fetchVmStatus({ node, vmid, signal, nodeConfig } = {}) {
     );
   }
 
-  const endpoint = `/nodes/${encodeURIComponent(resolvedNode)}/qemu/${encodeURIComponent(
+  const endpoint = `/nodes/${encodeURIComponent(resolvedNode)}/${guestType}/${encodeURIComponent(
     resolvedVmid
   )}/status/current`;
   return proxmoxGet(endpoint, { signal, node: resolvedNode, nodeConfig });
@@ -173,6 +174,8 @@ export async function fetchNodeVms({ node, signal, nodeConfig } = {}) {
     throw new Error("Node is required. Provide ?node= or set PROXMOX_DEFAULT_NODE.");
   }
 
-  const endpoint = `/nodes/${encodeURIComponent(resolvedNode)}/qemu`;
-  return proxmoxGet(endpoint, { signal, node: resolvedNode, nodeConfig });
+  // /cluster/resources returns qemu + lxc guests in one call (works on standalone nodes too).
+  const payload = await proxmoxGet("/cluster/resources?type=vm", { signal, node: resolvedNode, nodeConfig });
+  const list = Array.isArray(payload?.data) ? payload.data : [];
+  return { ...payload, data: list.filter((item) => item?.node === resolvedNode) };
 }

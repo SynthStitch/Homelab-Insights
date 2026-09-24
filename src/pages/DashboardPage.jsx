@@ -3,6 +3,7 @@ import * as echarts from "echarts";
 import { select } from "d3-selection";
 import ThreeMetricChart from "../components/ThreeMetricChart.jsx";
 import Field from "../components/Field.jsx";
+import Fleet from "../components/Fleet.jsx";
 import { fetchSnapshots, fetchNodeSummary, fetchNodeVms } from "../services/proxmoxApiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { colors, axisStyle, legendStyle, tooltipStyle, fonts } from "../lib/theme.js";
@@ -613,51 +614,17 @@ function DashboardPage() {
           )}
         </section>
 
-        <section className="panel span-12">
-          <div className="panel__head">
-            <span className="panel__title">Virtual machines</span>
-            <span className="panel__meta">charts follow VMID {selectedVmid}</span>
-          </div>
-          {vmList.length === 0 ? (
-            <p className="muted">No VMs detected on this node.</p>
-          ) : (
-            <ul className="vms">
-              <li className="vm vm--head" aria-hidden="true">
-                <span>Name</span>
-                <span>Status</span>
-                <span>CPU</span>
-                <span>Memory</span>
-                <span>Uptime</span>
-              </li>
-              {vmList.map((vm, index) => {
-                const id = vm.id ?? vm.vmid ?? index;
-                const active = String(id) === String(selectedVmid);
-                const vmStatus = (vm.status || "unknown").toLowerCase();
-                const memPct =
-                  Number.isFinite(vm?.mem) && Number.isFinite(vm?.maxMem) && vm.maxMem > 0
-                    ? clamp((vm.mem / vm.maxMem) * 100)
-                    : null;
-                return (
-                  <li key={id} className={`vm${active ? " is-active" : ""}`}>
-                    <button type="button" className="vm__name" onClick={() => setSelectedVmid(String(id))}>
-                      <span className="mono vm__id">{id}</span>
-                      {vm.name ?? `VM ${id}`}
-                    </button>
-                    <span className={`badge badge--${vmStatus}`}>{vmStatus}</span>
-                    <span className="mono">{Number.isFinite(vm?.cpu) ? `${clamp(vm.cpu * 100, 0, 400).toFixed(1)}%` : "—"}</span>
-                    <span className="mono">
-                      {pct(memPct)}
-                      <small className="vm__sub">
-                        {gb(vm?.mem)} / {gb(vm?.maxMem)}
-                      </small>
-                    </span>
-                    <span className="mono">{hm(vm?.uptimeSeconds)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+        <Fleet
+          nodes={availableNodes}
+          selectedNode={selectedNode}
+          selectedVmid={selectedVmid}
+          intervalMs={intervalMs}
+          demo={demoMode}
+          onSelect={(node, vmid) => {
+            setSelectedNode(node);
+            setSelectedVmid(vmid);
+          }}
+        />
 
         <section className="panel span-8">
           <div className="panel__head">

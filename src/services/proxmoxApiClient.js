@@ -11,7 +11,7 @@ function getStoredToken() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed?.token || null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }

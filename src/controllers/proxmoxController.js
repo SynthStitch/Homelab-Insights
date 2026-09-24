@@ -34,6 +34,7 @@ export const getVmStatus = async (req, res) => {
     const data = await fetchVmStatus({
       node: nodeName,
       vmid: req.query.vmid,
+      type: req.query.type,
       nodeConfig,
     });
     res.status(200);
@@ -188,6 +189,7 @@ function mapVmList(payload) {
   if (!Array.isArray(list)) return [];
   return list.map((item) => ({
     id: item?.vmid ?? item?.id,
+    type: item?.type === "lxc" ? "lxc" : "qemu",
     name: item?.name ?? item?.vmid?.toString(),
     status: item?.status,
     cpu: item?.cpu,
