@@ -49,12 +49,26 @@ function demoHistory(timeframe) {
   };
 }
 
-/** Fetches RRD history for a node. Pass the result to several <History> panels to share one request. */
+/** Merge several nodes' histories into one: host lines become named series, guests get a node suffix. */
+function mergeHistories(results) {
+  const named = results.filter(Boolean);
+  if (named.length === 1) return named[0];
+  const guests = [];
+  for (const r of named) {
+    if (r.host?.t?.length) guests.push({ id: `host-${r.node}`, name: `${r.node} (host)`, type: "host", status: "running", ...r.host });
+    for (const g of r.guests ?? []) guests.push({ ...g, name: `${g.name} @${r.node}` });
+  }
+  return { node: named.map((r) => r.node).join(", "), timeframe: named[0]?.timeframe, host: null, guests };
+}
+
+/** Fetches RRD history for one node or several (array). Pass the result to <History> panels to share one request. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useHistory(node, timeframe, demo = false) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const nodes = Array.isArray(node) ? node : node ? [node] : [];
+  const nodesKey = nodes.join("|");
 
   useEffect(() => {
     if (demo) {
@@ -62,14 +76,14 @@ export function useHistory(node, timeframe, demo = false) {
       setError("");
       return undefined;
     }
-    if (!node) return undefined;
+    if (!nodes.length) return undefined;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetchHistory({ node, timeframe });
+        const results = await Promise.all(nodes.map((n) => fetchHistory({ node: n, timeframe }).then((res) => res?.data ?? null)));
         if (!cancelled) {
-          setData(res?.data ?? null);
+          setData(mergeHistories(results));
           setError("");
         }
       } catch (err) {
@@ -84,7 +98,8 @@ export function useHistory(node, timeframe, demo = false) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [node, timeframe, demo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodesKey, timeframe, demo]);
 
   return { data, error, loading };
 }
@@ -276,7 +291,7 @@ export default function History({
                   <span className="legend__name">
                     <i style={{ background: r.color }} />
                     {r.name}
-                    {r.type ? <small>{r.type === "lxc" ? "ct" : "vm"}</small> : null}
+                    {r.type ? <small>{r.type === "lxc" ? "ct" : r.type === "host" ? "host" : "vm"}</small> : null}
                   </span>
                   <span className="mono">{fmtCell(r.max)}</span>
                   <span className="mono">{fmtCell(r.mean)}</span>

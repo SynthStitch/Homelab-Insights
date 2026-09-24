@@ -141,6 +141,41 @@
   }
 }
 
+/* node blocks (one per node in scope) */
+
+.node-blocks {
+  display: grid;
+  gap: 1rem;
+}
+
+.node-block {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.node-block__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.node-block__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.node-blocks--multi .node-block + .node-block {
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+/* gauge pairs: the wrapper is transparent to the grid */
+.gauge-pair {
+  display: contents;
+}
+
 /* stats */
 
 .stats {
