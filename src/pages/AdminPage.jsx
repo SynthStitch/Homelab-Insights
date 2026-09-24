@@ -139,6 +139,10 @@ function AdminPage() {
   const [nodeBusy, setNodeBusy] = useState(false);
   const [alertForm, setAlertForm] = useState({ phone: "", email: "", cpuThreshold: 80 });
   const [alertStatus, setAlertStatus] = useState({ message: "", variant: "info" });
+  const [promForm, setPromForm] = useState({ url: "", alertmanagerUrl: "", token: "", enabled: true, hasToken: false });
+  const [promStatus, setPromStatus] = useState({ message: "", variant: "info" });
+  const [promBusy, setPromBusy] = useState(false);
+  const [promProbe, setPromProbe] = useState(null);
 
   const token = auth?.token;
 
@@ -187,6 +191,68 @@ function AdminPage() {
       aborted = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    let aborted = false;
+    apiRequest("/api/integrations/prometheus", token)
+      .then((res) => {
+        if (aborted || !res?.prometheus) return;
+        const p = res.prometheus;
+        setPromForm({ url: p.url || "", alertmanagerUrl: p.alertmanagerUrl || "", token: "", enabled: p.enabled ?? true, hasToken: Boolean(p.hasToken) });
+      })
+      .catch((err) => !aborted && console.error("Failed to load integrations", err));
+    return () => {
+      aborted = true;
+    };
+  }, [token]);
+
+  const handlePromChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setPromForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+    setPromStatus({ message: "", variant: "info" });
+  };
+
+  const promBody = () => ({
+    url: promForm.url.trim(),
+    alertmanagerUrl: promForm.alertmanagerUrl.trim(),
+    token: promForm.token,
+    enabled: promForm.enabled,
+  });
+
+  const testProm = async () => {
+    setPromBusy(true);
+    setPromStatus({ message: "Probing Prometheus…", variant: "info" });
+    try {
+      const res = await apiRequest("/api/integrations/prometheus/test", token, { method: "POST", body: promBody() });
+      setPromProbe(res?.result ?? null);
+      const am = res?.result?.alertmanager;
+      setPromStatus({
+        message: `Prometheus ${res?.result?.version} · ${res?.result?.up}/${res?.result?.targets} targets up${am ? (am.ok ? ` · Alertmanager ${am.version}` : ` · Alertmanager unreachable: ${am.error}`) : ""}`,
+        variant: am && !am.ok ? "error" : "success",
+      });
+    } catch (err) {
+      setPromProbe(null);
+      setPromStatus({ message: normalizeError(err), variant: "error" });
+    } finally {
+      setPromBusy(false);
+    }
+  };
+
+  const saveProm = async (event) => {
+    event.preventDefault();
+    setPromBusy(true);
+    setPromStatus({ message: "Saving…", variant: "info" });
+    try {
+      const res = await apiRequest("/api/integrations/prometheus", token, { method: "PUT", body: promBody() });
+      const p = res?.prometheus ?? {};
+      setPromForm((prev) => ({ ...prev, token: "", hasToken: Boolean(p.hasToken), enabled: p.enabled ?? prev.enabled }));
+      setPromStatus({ message: p.enabled ? "Saved. Prometheus is enabled." : "Saved. Prometheus is disabled.", variant: "success" });
+    } catch (err) {
+      setPromStatus({ message: normalizeError(err), variant: "error" });
+    } finally {
+      setPromBusy(false);
+    }
+  };
 
   const sortedUsers = useMemo(
     () => [...users].sort((a, b) => a.username.localeCompare(b.username, undefined, { sensitivity: "base" })),
@@ -581,6 +647,61 @@ function AdminPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <span className="panel__title">Integrations · Prometheus</span>
+          <span className="panel__meta">{promForm.enabled && promForm.url ? "enabled" : "not configured"}</span>
+        </div>
+        <form className="form-grid" onSubmit={saveProm}>
+          <Field
+            className="field--wide"
+            label="Prometheus URL"
+            name="url"
+            value={promForm.url}
+            onChange={handlePromChange}
+            placeholder="http://10.8.8.102:9090"
+            help="The server that scrapes your PVE exporter. Charts can read from it later; the browser never talks to it directly."
+          />
+          <Field
+            label="Alertmanager URL (optional)"
+            name="alertmanagerUrl"
+            value={promForm.alertmanagerUrl}
+            onChange={handlePromChange}
+            placeholder="http://10.8.8.102:9093"
+          />
+          <Field
+            label={promForm.hasToken ? "Bearer token (stored; blank keeps it, - clears)" : "Bearer token (optional)"}
+            name="token"
+            type="password"
+            value={promForm.token}
+            onChange={handlePromChange}
+            autoComplete="off"
+          />
+          <label className="check">
+            <input type="checkbox" name="enabled" checked={promForm.enabled} onChange={handlePromChange} />
+            Enabled
+          </label>
+          <div className="actions">
+            <button type="button" className="btn" onClick={testProm} disabled={promBusy || !promForm.url.trim()}>
+              {promBusy ? "Working…" : "Test connection"}
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={promBusy}>
+              Save
+            </button>
+          </div>
+          {promStatus.message ? (
+            <p className={`status-text status-text--${promStatus.variant}`} role="status">
+              {promStatus.message}
+            </p>
+          ) : null}
+          {promProbe?.jobs?.length ? (
+            <p className="field__help">
+              Jobs: <span className="mono">{promProbe.jobs.join(", ")}</span>
+            </p>
+          ) : null}
+        </form>
       </section>
 
       <section className="panel">

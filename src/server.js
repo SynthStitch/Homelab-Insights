@@ -8,6 +8,7 @@ import usersRoutes from "./routes/users.js";
 import proxmoxRoutes from "./routes/proxmox.js";
 import assistantRoutes from "./routes/assistant.js";
 import alertsRoutes from "./routes/alerts.js";
+import integrationsRoutes from "./routes/integrations.js";
 import "./otel.js"; // start OpenTelemetry SDK before app logic
 import { authenticate, adminOnly } from "./middlewares/auth.js";
 import { config } from "./config.js";
@@ -32,6 +33,8 @@ app.use("/api/proxmox", proxmoxRoutes);
 app.use("/api/assistant", assistantRoutes);
 // Alerts (test endpoint for SMS/email)
 app.use("/api/alerts", alertsRoutes);
+// Integrations (Prometheus / Alertmanager settings + proxied queries)
+app.use("/api/integrations", integrationsRoutes);
 
 // ponytail: serve the Vite build from the same process; no nginx needed
 const dist = path.resolve("dist");

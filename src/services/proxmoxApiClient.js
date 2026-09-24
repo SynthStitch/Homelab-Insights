@@ -66,3 +66,8 @@ export function fetchNodeVms({ node } = {}) {
 export function fetchHistory({ node, timeframe } = {}) {
   return fetchJson("/api/proxmox/history", { node, timeframe });
 }
+
+/** PromQL range query through the API proxy (requires Prometheus configured in Admin). */
+export function fetchPromRange({ query, start, end, step } = {}) {
+  return fetchJson("/api/integrations/prometheus/query_range", { query, start, end, step });
+}
