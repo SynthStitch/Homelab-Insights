@@ -1,4 +1,4 @@
-// Fixed background: color blooms, drifting glass shards, plus-grid, grain, scanline.
+// Fixed background: color blooms, drifting glass shards, plus-grid, grain.
 // ponytail: pure CSS animation, no rAF loop. Tune SHARDS for composition, not code.
 const SHARDS = [
   { x: -8, y: 58, w: 560, h: 64, r: -38, b: 14, o: 0.55, d: 0 },
@@ -37,7 +37,6 @@ export default function Atmosphere() {
       <div className="atmo__grid" />
       <div className="atmo__grain" />
       <div className="atmo__crt" />
-      <div className="atmo__scan" />
     </div>
   );
 }
