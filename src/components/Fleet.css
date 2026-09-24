@@ -1,7 +1,26 @@
 .fleet__modes {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.35rem 0.75rem;
+}
+
+/* ---------- flow graph ---------- */
+
+.flow {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.flow canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .fleet__mode {

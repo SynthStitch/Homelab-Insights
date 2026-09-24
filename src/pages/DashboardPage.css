@@ -109,6 +109,9 @@
   .dash[data-layout="grid"] .matrix__caption {
     margin-top: 1rem;
   }
+  .dash[data-layout="grid"] .flow {
+    height: 240px;
+  }
   .dash[data-layout="grid"] .fleet__group {
     grid-template-columns: 1fr;
     gap: 0.4rem;

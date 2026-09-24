@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchNodeVms } from "../services/proxmoxApiClient.js";
+import FlowGraph from "./FlowGraph.jsx";
+import { useChartTheme } from "../context/ThemeContext.jsx";
 import "./Fleet.css";
 
 // ponytail: folders live in localStorage; move to a /api/users prefs field when they must sync across devices.
 const FOLDERS_KEY = "homelab-fleet-folders";
 const MODE_KEY = "homelab-fleet-mode";
+const VIEW_KEY = "homelab-fleet-view";
 const UNSORTED = "__unsorted";
 
 const readJson = (key, fallback) => {
@@ -17,16 +20,16 @@ const readJson = (key, fallback) => {
 };
 
 const DEMO_GUESTS = [
-  { node: "pve", id: 100, type: "lxc", name: "docker", status: "running" },
-  { node: "pve", id: 108, type: "lxc", name: "fileserver", status: "running" },
-  { node: "pve", id: 102, type: "qemu", name: "truenas", status: "stopped" },
-  { node: "pve", id: 103, type: "qemu", name: "test", status: "running" },
-  { node: "pve", id: 104, type: "qemu", name: "truenas-copy", status: "stopped" },
-  { node: "pve", id: 777, type: "qemu", name: "ubuntu-example", status: "stopped" },
-  { node: "pve-1", id: 201, type: "lxc", name: "pihole", status: "running" },
-  { node: "pve-1", id: 202, type: "lxc", name: "n8n", status: "running" },
-  { node: "pve-1", id: 210, type: "qemu", name: "home-assistant", status: "running" },
-  { node: "pve-1", id: 211, type: "qemu", name: "win11", status: "stopped" },
+  { node: "pve", id: 100, type: "lxc", name: "docker", status: "running", cpu: 0.22 },
+  { node: "pve", id: 108, type: "lxc", name: "fileserver", status: "running", cpu: 0.04 },
+  { node: "pve", id: 102, type: "qemu", name: "truenas", status: "stopped", cpu: 0 },
+  { node: "pve", id: 103, type: "qemu", name: "test", status: "running", cpu: 0.11 },
+  { node: "pve", id: 104, type: "qemu", name: "truenas-copy", status: "stopped", cpu: 0 },
+  { node: "pve", id: 777, type: "qemu", name: "ubuntu-example", status: "stopped", cpu: 0 },
+  { node: "pve-1", id: 201, type: "lxc", name: "pihole", status: "running", cpu: 0.02 },
+  { node: "pve-1", id: 202, type: "lxc", name: "n8n", status: "running", cpu: 0.35 },
+  { node: "pve-1", id: 210, type: "qemu", name: "home-assistant", status: "running", cpu: 0.18 },
+  { node: "pve-1", id: 211, type: "qemu", name: "win11", status: "stopped", cpu: 0 },
 ];
 
 const keyOf = (g) => `${g.node}:${g.id}`;
@@ -37,15 +40,18 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
   const [folders, setFolders] = useState(() => readJson(FOLDERS_KEY, {}));
   const [hotGroup, setHotGroup] = useState(null);
   const [hotKey, setHotKey] = useState(null);
+  const [view, setView] = useState(() => readJson(VIEW_KEY, "matrix"));
+  const ct = useChartTheme();
 
   useEffect(() => {
     try {
       localStorage.setItem(MODE_KEY, JSON.stringify(mode));
       localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+      localStorage.setItem(VIEW_KEY, JSON.stringify(view));
     } catch {
       /* private mode: fine, folders just won't persist */
     }
-  }, [mode, folders]);
+  }, [mode, folders, view]);
 
   useEffect(() => {
     if (demo) {
@@ -101,6 +107,17 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
   }, [mode, guests, folders, nodes]);
 
   const running = guests.filter((g) => g.status === "running").length;
+  const flowItems = groups.flatMap((g, gi) =>
+    g.items.map((item) => ({
+      key: keyOf(item),
+      name: item.name ?? `${item.type === "lxc" ? "CT" : "VM"} ${item.id}`,
+      status: item.status,
+      cpu: item.cpu,
+      color: ct.seriesPalette[gi % ct.seriesPalette.length],
+      groupId: g.id,
+    })),
+  );
+  const flowLabel = mode === "node" && hotGroup ? hotGroup : nodes.length === 1 ? nodes[0] : `${nodes.length} nodes`;
   const isSelected = (g) => g.node === selectedNode && String(g.id) === String(selectedVmid);
 
   const addFolder = () => {
@@ -129,7 +146,17 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
     <section className="panel fleet">
       <div className="panel__head">
         <span className="panel__title">Fleet</span>
-        <div className="fleet__modes" role="tablist" aria-label="Group guests by">
+        <div className="fleet__modes">
+          <div className="seg" role="tablist" aria-label="View">
+            {[
+              ["matrix", "Matrix"],
+              ["flow", "Flow"],
+            ].map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={view === id} className={`seg__btn${view === id ? " is-active" : ""}`} onClick={() => setView(id)}>
+                {label}
+              </button>
+            ))}
+          </div>
           {[
             ["node", "Node"],
             ["type", "Type"],
@@ -158,6 +185,22 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
         <p className="muted">No guests found on {nodes.join(", ") || "any node"}.</p>
       ) : (
         <div className="fleet__body">
+          {view === "flow" ? (
+            <FlowGraph
+              items={flowItems}
+              hotKey={hotKey}
+              selectedKey={guests.find(isSelected) ? keyOf(guests.find(isSelected)) : null}
+              label={flowLabel}
+              onHover={(key) => {
+                setHotKey(key);
+                setHotGroup(key ? flowItems.find((f) => f.key === key)?.groupId ?? null : null);
+              }}
+              onSelect={(key) => {
+                const g = guests.find((x) => keyOf(x) === key);
+                if (g) onSelect?.(g.node, String(g.id));
+              }}
+            />
+          ) : (
           <div className="matrix" aria-hidden="true">
             <div className="matrix__stage">
               {groups.map((g) => (
@@ -181,6 +224,7 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
               fleet matrix · {guests.length} guests · {running} running
             </p>
           </div>
+          )}
 
           <ul className="fleet__groups">
             {groups.map((g) => (
