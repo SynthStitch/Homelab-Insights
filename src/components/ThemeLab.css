@@ -1,0 +1,136 @@
+.lab {
+  position: fixed;
+  top: var(--nav-h);
+  right: 0;
+  bottom: 0;
+  width: min(380px, 100vw);
+  z-index: 70;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: rgba(7, 11, 20, 0.94);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(18px);
+  border-left: 1px solid var(--line-strong);
+  box-shadow: var(--shadow);
+  animation: rise 0.25s var(--ease) both;
+}
+
+.lab__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.lab__sub {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--faint);
+  margin-top: 0.2rem;
+}
+
+.lab__body {
+  overflow-y: auto;
+  padding: 0.5rem 1rem 2rem;
+}
+
+.lab__sec {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.6rem;
+}
+
+.lab__sec h4 {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.lab__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lab__custom {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.lab__custom::before {
+  display: none;
+}
+
+.lab__custom button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+}
+
+.lab__custom button + button {
+  border-left: 1px solid var(--line);
+  color: var(--faint);
+}
+
+.lab__custom button + button:hover {
+  color: var(--danger);
+}
+
+.lab__tokens {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 0.75rem;
+}
+
+.lab__token {
+  display: grid;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.lab__token input[type="color"] {
+  width: 100%;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.lab__token input[type="text"],
+.lab__token select {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.lab__io {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  resize: vertical;
+}

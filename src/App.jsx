@@ -11,6 +11,7 @@ import RequireAuth from "./components/RequireAuth.jsx";
 import AssistantChat from "./components/AssistantChat.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Atmosphere from "./components/Atmosphere.jsx";
+import ThemeLab from "./components/ThemeLab.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import "./App.css";
 
@@ -67,6 +68,7 @@ function AppShell() {
         </Suspense>
       </main>
       <AssistantChat />
+      <ThemeLab />
     </div>
   );
 }

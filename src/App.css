@@ -88,6 +88,13 @@
   border-radius: 1px;
 }
 
+.nav__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
 .nav__actions {
   display: flex;
   align-items: center;
@@ -130,6 +137,7 @@
 
   .nav__toggle {
     display: grid;
+    margin-left: 0.25rem;
   }
 
   .nav__sheet {

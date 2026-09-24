@@ -8,7 +8,7 @@ const BAR_WIDTH = 0.35;
 const HEIGHT_SCALE = 0.03;
 const AXIS_TICKS = [0, 25, 50, 75, 100];
 
-function ThreeMetricChart({ data = [], color = "#facc15", interactive = true }) {
+function ThreeMetricChart({ data = [], color = "#facc15", background = "#0b1020", gridColor = "#1e2740", interactive = true }) {
   const wrapperRef = useRef(null);
   const canvasRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -28,7 +28,7 @@ function ThreeMetricChart({ data = [], color = "#facc15", interactive = true }) 
     if (!wrapper || !canvasHost) return undefined;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b1020);
+    scene.background = new THREE.Color(background);
 
     const width = wrapper.clientWidth || 400;
     const height = wrapper.clientHeight || 300;
@@ -62,7 +62,7 @@ function ThreeMetricChart({ data = [], color = "#facc15", interactive = true }) 
 
     scene.add(ambient, keyLight, rimLight);
 
-    const grid = new THREE.GridHelper(12, 12, 0x1e2740, 0x1e2740);
+    const grid = new THREE.GridHelper(12, 12, gridColor, gridColor);
     grid.position.y = -0.5;
     scene.add(grid);
 
@@ -89,7 +89,7 @@ function ThreeMetricChart({ data = [], color = "#facc15", interactive = true }) 
     const base = new THREE.Mesh(
       new THREE.BoxGeometry(BAR_COUNT * BAR_SPACING + 0.6, 0.06, 2),
       new THREE.MeshStandardMaterial({
-        color: 0x0f1526,
+        color: new THREE.Color(background).offsetHSL(0, 0, 0.02),
         transparent: true,
         opacity: 0.85,
       })

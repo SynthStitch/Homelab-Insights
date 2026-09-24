@@ -1,51 +1,90 @@
-// JS mirror of the CSS tokens for canvas/WebGL libraries (ECharts, three).
-// Keep in sync with src/index.css :root.
-export const colors = {
-  bg: "#070b14",
-  bgElev: "#0b1020",
-  surface: "#0f1526",
-  line: "#1e2740",
-  text: "#e6ebf7",
-  muted: "#8b96b0",
-  faint: "#5b6680",
-  accent: "#facc15",
-  live: "#2dd4bf",
-  info: "#60a5fa",
-  violet: "#a78bfa",
-  warn: "#fb923c",
-  danger: "#fb7185",
-};
+// Chart theme module: turns the active design tokens into ECharts styling.
+// Each `fx` mode also changes the *shape* of the graphs, not just colours:
+//   glass → smooth lines with soft gradient fills
+//   crt   → stepped phosphor traces with glow, ruler ticks (MAGI)
+//   grid  → thin straight strokes, no fill (wireframe)
+import { PRESETS } from "./themes.js";
 
-// Distinct hues for many-series charts; host line uses colors.text.
-export const seriesPalette = [
-  "#facc15", "#2dd4bf", "#60a5fa", "#a78bfa", "#fb923c", "#fb7185",
-  "#4ade80", "#f472b6", "#38bdf8", "#e879f9", "#fbbf24", "#34d399",
-];
+const glassPalette = ["#facc15", "#2dd4bf", "#60a5fa", "#a78bfa", "#fb923c", "#fb7185", "#4ade80", "#f472b6", "#38bdf8", "#e879f9", "#fbbf24", "#34d399"];
 
-export const fonts = {
-  mono: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
-};
+export function buildChartTheme(vars, fx = vars.fx || "glass") {
+  const colors = {
+    bg: vars.bg,
+    bgElev: vars["bg-elev"],
+    surface: vars.surface,
+    line: vars["line-strong"],
+    lineSoft: vars.line,
+    text: vars.text,
+    muted: vars.muted,
+    faint: vars.faint,
+    accent: vars.accent,
+    live: vars.live,
+    info: vars.info,
+    violet: vars.violet,
+    warn: vars.warn,
+    danger: vars.danger,
+  };
+  const fonts = { mono: vars["font-mono"] };
+  const crt = fx === "crt";
+  const wire = fx === "grid";
 
-// Shared ECharts axis/grid styling so every chart reads as one instrument.
-export const axisStyle = {
-  axisLine: { lineStyle: { color: colors.line } },
-  axisTick: { show: false },
-  axisLabel: { color: colors.faint, fontFamily: fonts.mono, fontSize: 10 },
-  splitLine: { lineStyle: { color: colors.line, type: "dashed" } },
-};
+  const seriesPalette = crt
+    ? [colors.accent, colors.live, colors.danger, colors.info, colors.warn, colors.violet, "#ffd9b3", "#c8ffd0", "#ff8f7a", "#ffe6a3"]
+    : wire
+      ? ["#ffffff", "#bdbdbd", "#8f8f8f", colors.live, colors.info, colors.violet, colors.warn, colors.danger, "#6e6e6e", "#d0d0d0"]
+      : glassPalette;
 
-export const legendStyle = {
-  top: 0,
-  right: 0,
-  icon: "roundRect",
-  itemWidth: 10,
-  itemHeight: 3,
-  textStyle: { color: colors.muted, fontFamily: fonts.mono, fontSize: 10 },
-};
+  const axisStyle = {
+    axisLine: { lineStyle: { color: colors.line } },
+    axisTick: crt ? { show: true, length: 5, lineStyle: { color: colors.line } } : { show: false },
+    ...(crt ? { minorTick: { show: true, splitNumber: 5, length: 3, lineStyle: { color: colors.lineSoft } } } : {}),
+    axisLabel: { color: colors.faint, fontFamily: fonts.mono, fontSize: 10 },
+    splitLine: { lineStyle: { color: colors.lineSoft, type: crt ? "dotted" : wire ? "solid" : "dashed" } },
+  };
 
-export const tooltipStyle = {
-  trigger: "axis",
-  backgroundColor: "rgba(20,28,49,0.96)",
-  borderColor: colors.line,
-  textStyle: { color: colors.text, fontFamily: fonts.mono, fontSize: 11 },
-};
+  const legendStyle = {
+    top: 0,
+    right: 0,
+    icon: "roundRect",
+    itemWidth: 10,
+    itemHeight: 3,
+    textStyle: { color: colors.muted, fontFamily: fonts.mono, fontSize: 10 },
+  };
+
+  const tooltipStyle = {
+    trigger: "axis",
+    backgroundColor: vars["surface-2"],
+    borderColor: colors.line,
+    textStyle: { color: colors.text, fontFamily: fonts.mono, fontSize: 11 },
+  };
+
+  const line = (color, width = crt ? 1.6 : wire ? 1.2 : 2) => ({
+    width,
+    color,
+    ...(crt ? { shadowBlur: 10, shadowColor: color } : {}),
+  });
+
+  const seriesStyle = crt ? { step: "end", smooth: false } : wire ? { smooth: false } : { smooth: 0.35 };
+
+  const area = (color) =>
+    crt || wire
+      ? undefined
+      : {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: `${color}55` },
+              { offset: 1, color: `${color}00` },
+            ],
+          },
+        };
+
+  return { fx, colors, fonts, seriesPalette, axisStyle, legendStyle, tooltipStyle, line, seriesStyle, area };
+}
+
+// Static fallback for non-React consumers (three.js scene, tests).
+export const colors = buildChartTheme(PRESETS.glass.vars).colors;

@@ -230,7 +230,7 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
                       title={`${item.type === "lxc" ? "Container" : "VM"} ${item.id} on ${item.node} · ${item.status}`}
                     >
                       {item.name}
-                      <small>
+                      <small className="sensitive">
                         {item.type === "lxc" ? "CT" : "VM"} {item.id}
                       </small>
                     </button>

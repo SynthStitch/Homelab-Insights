@@ -560,7 +560,7 @@ function AdminPage() {
                       </span>
                       <span>
                         <b>URL</b>
-                        {n.baseUrl}
+                        <span className="sensitive">{n.baseUrl}</span>
                       </span>
                       <span>
                         <b>VMID</b>

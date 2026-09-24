@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { fetchHistory } from "../services/proxmoxApiClient.js";
-import { colors, fonts, seriesPalette, axisStyle, tooltipStyle } from "../lib/theme.js";
+import { useChartTheme } from "../context/ThemeContext.jsx";
 import "./History.css";
 
 const METRICS = [
@@ -55,6 +55,7 @@ export default function History({ node, demo = false }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const ct = useChartTheme();
 
   useEffect(() => {
     if (demo) {
@@ -102,10 +103,10 @@ export default function History({ node, demo = false }) {
       name: g.name,
       type: "line",
       showSymbol: false,
-      smooth: 0.25,
+      ...ct.seriesStyle,
       connectNulls: false,
-      lineStyle: { width: 1.5, color: seriesPalette[i % seriesPalette.length] },
-      itemStyle: { color: seriesPalette[i % seriesPalette.length] },
+      lineStyle: ct.line(ct.seriesPalette[i % ct.seriesPalette.length], 1.5),
+      itemStyle: { color: ct.seriesPalette[i % ct.seriesPalette.length] },
       emphasis: { focus: "series", lineStyle: { width: 2.5 } },
       data: toPoints(g),
     }));
@@ -114,9 +115,9 @@ export default function History({ node, demo = false }) {
         name: "host",
         type: "line",
         showSymbol: false,
-        smooth: 0.25,
-        lineStyle: { width: 2, color: colors.text, type: "dashed" },
-        itemStyle: { color: colors.text },
+        ...ct.seriesStyle,
+        lineStyle: { ...ct.line(ct.colors.text, 2), type: "dashed" },
+        itemStyle: { color: ct.colors.text },
         emphasis: { focus: "series" },
         data: toPoints(data.host),
       });
@@ -127,7 +128,7 @@ export default function History({ node, demo = false }) {
         animationDuration: 300,
         grid: { left: 48, right: 16, top: 12, bottom: 56 },
         tooltip: {
-          ...tooltipStyle,
+          ...ct.tooltipStyle,
           order: "valueDesc",
           valueFormatter: (v) => (v === null || v === undefined ? "—" : `${Number(v).toFixed(metricDef.unit === "%" ? 1 : 2)} ${metricDef.unit}`),
         },
@@ -137,25 +138,25 @@ export default function History({ node, demo = false }) {
           icon: "roundRect",
           itemWidth: 10,
           itemHeight: 3,
-          textStyle: { color: colors.muted, fontFamily: fonts.mono, fontSize: 10 },
-          pageTextStyle: { color: colors.muted },
-          pageIconColor: colors.muted,
-          pageIconInactiveColor: colors.line,
+          textStyle: { color: ct.colors.muted, fontFamily: ct.fonts.mono, fontSize: 10 },
+          pageTextStyle: { color: ct.colors.muted },
+          pageIconColor: ct.colors.muted,
+          pageIconInactiveColor: ct.colors.line,
         },
-        xAxis: { type: "time", ...axisStyle, splitLine: { show: false } },
+        xAxis: { type: "time", ...ct.axisStyle, splitLine: { show: false } },
         yAxis: {
           type: "value",
           min: 0,
           max: metricDef.max,
-          ...axisStyle,
-          axisLabel: { ...axisStyle.axisLabel, formatter: `{value} ${metricDef.unit}` },
+          ...ct.axisStyle,
+          axisLabel: { ...ct.axisStyle.axisLabel, formatter: `{value} ${metricDef.unit}` },
         },
         dataZoom: [{ type: "inside", throttle: 50 }],
         series,
       },
       { notMerge: true },
     );
-  }, [data, metric, metricDef]);
+  }, [data, metric, metricDef, ct]);
 
   const guestCount = data?.guests?.length ?? 0;
 

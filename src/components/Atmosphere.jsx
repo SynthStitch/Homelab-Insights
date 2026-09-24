@@ -36,6 +36,7 @@ export default function Atmosphere() {
       </div>
       <div className="atmo__grid" />
       <div className="atmo__grain" />
+      <div className="atmo__crt" />
       <div className="atmo__scan" />
     </div>
   );

@@ -7,7 +7,7 @@ import Fleet from "../components/Fleet.jsx";
 import History from "../components/History.jsx";
 import { fetchSnapshots, fetchNodeSummary, fetchNodeVms } from "../services/proxmoxApiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { colors, axisStyle, legendStyle, tooltipStyle, fonts } from "../lib/theme.js";
+import { useChartTheme } from "../context/ThemeContext.jsx";
 import "./DashboardPage.css";
 
 const SAMPLE_SIZE = 20;
@@ -173,30 +173,21 @@ const buildSamplePoint = (prev) => ({
   diskWrite: [...prev.diskWrite.slice(1), clamp((prev.diskWrite.at(-1) ?? 0.18) + (Math.random() * 0.1 - 0.05), 0, 4)],
 });
 
-const lineSeries = (name, data, color, area = false) => ({
+const lineSeries = (ct, name, data, color, area = false) => ({
   name,
   type: "line",
-  smooth: 0.35,
+  ...ct.seriesStyle,
   data,
   showSymbol: false,
-  lineStyle: { width: 2, color },
-  ...(area
-    ? {
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: `${color}55` },
-            { offset: 1, color: `${color}00` },
-          ]),
-        },
-      }
-    : {}),
+  lineStyle: ct.line(color),
+  ...(area && ct.area(color) ? { areaStyle: ct.area(color) } : {}),
 });
 
-const timeAxis = (data) => ({
+const timeAxis = (ct, data) => ({
   type: "category",
   data,
   boundaryGap: false,
-  ...axisStyle,
+  ...ct.axisStyle,
   splitLine: { show: false },
 });
 
@@ -231,6 +222,7 @@ function DashboardPage() {
   const [selectedNode, setSelectedNode] = useState(PROXMOX_NODE);
   const [selectedVmid, setSelectedVmid] = useState(PROXMOX_VMID);
   const { auth } = useAuth();
+  const ct = useChartTheme();
 
   useEffect(() => {
     try {
@@ -262,12 +254,12 @@ function DashboardPage() {
   useEffect(() => {
     cpuChart.current?.setOption({
       grid: { left: 40, right: 12, top: 20, bottom: 28 },
-      tooltip: tooltipStyle,
-      xAxis: timeAxis(points.time),
-      yAxis: { type: "value", min: 0, max: 100, ...axisStyle, axisLabel: { ...axisStyle.axisLabel, formatter: "{value}%" } },
-      series: [lineSeries("CPU", points.cpu, colors.accent, true)],
+      tooltip: ct.tooltipStyle,
+      xAxis: timeAxis(ct, points.time),
+      yAxis: { type: "value", min: 0, max: 100, ...ct.axisStyle, axisLabel: { ...ct.axisStyle.axisLabel, formatter: "{value}%" } },
+      series: [lineSeries(ct, "CPU", points.cpu, ct.colors.accent, true)],
     });
-  }, [points.cpu, points.time]);
+  }, [ct, points.cpu, points.time]);
 
   useEffect(() => {
     memChart.current?.setOption({
@@ -280,8 +272,8 @@ function DashboardPage() {
           max: 100,
           radius: "92%",
           center: ["50%", "58%"],
-          progress: { show: true, width: 10, roundCap: true, itemStyle: { color: colors.live } },
-          axisLine: { roundCap: true, lineStyle: { width: 10, color: [[1, colors.line]] } },
+          progress: { show: true, width: 10, roundCap: true, itemStyle: { color: ct.colors.live } },
+          axisLine: { roundCap: true, lineStyle: { width: 10, color: [[1, ct.colors.line]] } },
           axisTick: { show: false },
           splitLine: { show: false },
           axisLabel: { show: false },
@@ -291,8 +283,8 @@ function DashboardPage() {
           detail: {
             valueAnimation: true,
             formatter: "{value}%",
-            color: colors.text,
-            fontFamily: fonts.mono,
+            color: ct.colors.text,
+            fontFamily: ct.fonts.mono,
             fontSize: 30,
             fontWeight: 600,
             offsetCenter: [0, "-5%"],
@@ -301,41 +293,41 @@ function DashboardPage() {
         },
       ],
     });
-  }, [points.mem]);
+  }, [ct, points.mem]);
 
   useEffect(() => {
     netChart.current?.setOption({
       grid: { left: 52, right: 12, top: 28, bottom: 28 },
-      tooltip: tooltipStyle,
-      legend: { ...legendStyle, data: ["Ingress", "Egress"] },
-      xAxis: timeAxis(points.time),
+      tooltip: ct.tooltipStyle,
+      legend: { ...ct.legendStyle, data: ["Ingress", "Egress"] },
+      xAxis: timeAxis(ct, points.time),
       yAxis: {
         type: "value",
         min: 0,
         max: (value) => Math.max(10, (value.max || 0) * 1.25),
-        ...axisStyle,
-        axisLabel: { ...axisStyle.axisLabel, formatter: "{value} Kb/s" },
+        ...ct.axisStyle,
+        axisLabel: { ...ct.axisStyle.axisLabel, formatter: "{value} Kb/s" },
       },
-      series: [lineSeries("Ingress", points.netIn, colors.info), lineSeries("Egress", points.netOut, colors.violet)],
+      series: [lineSeries(ct, "Ingress", points.netIn, ct.colors.info), lineSeries(ct, "Egress", points.netOut, ct.colors.violet)],
     });
-  }, [points.netIn, points.netOut, points.time]);
+  }, [ct, points.netIn, points.netOut, points.time]);
 
   useEffect(() => {
     diskChart.current?.setOption({
       grid: { left: 52, right: 12, top: 28, bottom: 28 },
-      tooltip: tooltipStyle,
-      legend: { ...legendStyle, data: ["Read", "Write"] },
-      xAxis: timeAxis(points.time),
+      tooltip: ct.tooltipStyle,
+      legend: { ...ct.legendStyle, data: ["Read", "Write"] },
+      xAxis: timeAxis(ct, points.time),
       yAxis: {
         type: "value",
         min: 0,
         max: (value) => Math.max(1, (value.max || 0) * 1.2),
-        ...axisStyle,
-        axisLabel: { ...axisStyle.axisLabel, formatter: "{value} MB/s" },
+        ...ct.axisStyle,
+        axisLabel: { ...ct.axisStyle.axisLabel, formatter: "{value} MB/s" },
       },
-      series: [lineSeries("Read", points.diskRead, colors.live), lineSeries("Write", points.diskWrite, colors.warn)],
+      series: [lineSeries(ct, "Read", points.diskRead, ct.colors.live), lineSeries(ct, "Write", points.diskWrite, ct.colors.warn)],
     });
-  }, [points.diskRead, points.diskWrite, points.time]);
+  }, [ct, points.diskRead, points.diskWrite, points.time]);
 
   useEffect(() => {
     let aborted = false;
@@ -412,7 +404,7 @@ function DashboardPage() {
         if (hostMemPercent !== null) nextPoints.mem = hostMemPercent;
         setPoints(nextPoints);
         setLastUpdated(lastTimestamp);
-        setStatus({ type: "live", message: `${nodeName} · VMID ${selectedVmid}` });
+        setStatus({ type: "live", message: nodeName });
       } catch (err) {
         if (cancelled) return;
         console.error("Failed to load Proxmox telemetry", err);
@@ -532,6 +524,7 @@ function DashboardPage() {
           <p className="dash__status">
             <span className={`badge badge--${status.type}`}>{status.type}</span>
             <span className="muted">{status.message}</span>
+            {status.type === "live" ? <span className="mono sensitive dash__updated">VMID {selectedVmid}</span> : null}
             {status.type === "live" && lastUpdated ? (
               <span className="mono dash__updated">updated {formatTimestamp(lastUpdated)}</span>
             ) : null}
@@ -597,7 +590,7 @@ function DashboardPage() {
                 <span className="stat__label">CPU</span>
                 <span className="stat__value">{pct(nodeCpuPercent)}</span>
                 <span className="stat__meta">{Number.isFinite(nodeSummary?.maxCpu) ? `${nodeSummary.maxCpu} cores` : " "}</span>
-                <span className="bar" style={{ "--w": `${nodeCpuPercent ?? 0}%`, "--c": colors.accent }}>
+                <span className="bar" style={{ "--w": `${nodeCpuPercent ?? 0}%`, "--c": ct.colors.accent }}>
                   <i />
                 </span>
               </div>
@@ -607,7 +600,7 @@ function DashboardPage() {
                 <span className="stat__meta">
                   {gb(nodeMemUsed)} / {gb(nodeMemTotal)}
                 </span>
-                <span className="bar" style={{ "--w": `${nodeMemPercent ?? 0}%`, "--c": colors.live }}>
+                <span className="bar" style={{ "--w": `${nodeMemPercent ?? 0}%`, "--c": ct.colors.live }}>
                   <i />
                 </span>
               </div>
@@ -617,7 +610,7 @@ function DashboardPage() {
                 <span className="stat__meta">
                   {gb(nodeFsUsed)} / {gb(nodeFsTotal)}
                 </span>
-                <span className="bar" style={{ "--w": `${nodeFsPercent ?? 0}%`, "--c": colors.info }}>
+                <span className="bar" style={{ "--w": `${nodeFsPercent ?? 0}%`, "--c": ct.colors.info }}>
                   <i />
                 </span>
               </div>
@@ -706,7 +699,7 @@ function DashboardPage() {
               <span className="panel__title">CPU history · 3D</span>
               <span className="panel__meta">drag to orbit</span>
             </div>
-            <ThreeMetricChart data={points.cpu} color={colors.accent} interactive />
+            <ThreeMetricChart key={ct.colors.bgElev} data={points.cpu} color={ct.colors.accent} background={ct.colors.bgElev} gridColor={ct.colors.line} interactive />
           </section>
         ) : null}
       </div>
