@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as echarts from "echarts";
-import { select } from "d3-selection";
 import ThreeMetricChart from "../components/ThreeMetricChart.jsx";
 import Field from "../components/Field.jsx";
 import Fleet from "../components/Fleet.jsx";
-import History from "../components/History.jsx";
+import History, { RANGES, useHistory } from "../components/History.jsx";
 import { fetchSnapshots, fetchNodeSummary, fetchNodeVms } from "../services/proxmoxApiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useChartTheme } from "../context/ThemeContext.jsx";
@@ -12,60 +11,25 @@ import "./DashboardPage.css";
 
 const SAMPLE_SIZE = 20;
 const DEFAULT_INTERVAL =
-  (typeof import.meta !== "undefined" &&
-    Number(import.meta.env?.VITE_PROXMOX_POLL_INTERVAL_MS)) ||
-  15000;
-const PROXMOX_NODE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_PROXMOX_NODE) || "pve";
-const PROXMOX_VMID =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_PROXMOX_VMID) || "102";
+  (typeof import.meta !== "undefined" && Number(import.meta.env?.VITE_PROXMOX_POLL_INTERVAL_MS)) || 15000;
+const PROXMOX_NODE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_PROXMOX_NODE) || "pve";
+const PROXMOX_VMID = (typeof import.meta !== "undefined" && import.meta.env?.VITE_PROXMOX_VMID) || "102";
 const API_BASE =
   typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE
     ? import.meta.env.VITE_API_BASE.replace(/\/$/, "")
     : ""; // ponytail: same-origin in prod; set VITE_API_BASE only for split dev servers
 
-const blankSeries = (value = 0) => Array(SAMPLE_SIZE).fill(value);
-
-const createEmptyPoints = () => ({
-  time: blankSeries("--"),
-  cpu: blankSeries(0),
-  mem: 0,
-  netIn: blankSeries(0),
-  netOut: blankSeries(0),
-  diskRead: blankSeries(0),
-  diskWrite: blankSeries(0),
-});
-
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
-
-const padSeries = (series, size, fillValue) => {
-  if (series.length >= size) return series.slice(series.length - size);
-  return [...Array(size - series.length).fill(fillValue), ...series];
-};
-
 const toNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 };
-
-const computeRateFromRaw = (currentValue, previousValue, deltaSeconds) => {
-  const current = toNumber(currentValue);
-  const previous = toNumber(previousValue);
-  if (!Number.isFinite(current) || !Number.isFinite(previous)) return 0;
-  const delta = current - previous;
-  if (!Number.isFinite(delta) || delta <= 0) return 0;
-  return deltaSeconds > 0 ? delta / deltaSeconds : 0;
-};
-
-const bytesToMegabytesPerSecond = (bytesPerSecond) =>
-  Number.isFinite(bytesPerSecond) && bytesPerSecond > 0
-    ? Math.round((bytesPerSecond / (1024 * 1024)) * 100) / 100
-    : 0;
-
-const bytesToKilobitsPerSecond = (bytesPerSecond) =>
-  Number.isFinite(bytesPerSecond) && bytesPerSecond > 0
-    ? Math.round(((bytesPerSecond * 8) / 1024) * 100) / 100
-    : 0;
+const gb = (value) => (Number.isFinite(value) ? `${(value / 1024 ** 3).toFixed(1)} GB` : "—");
+const pct = (value) => (Number.isFinite(value) ? `${value.toFixed(1)}%` : "—");
+const ratio = (used, total) => (Number.isFinite(used) && Number.isFinite(total) && total > 0 ? clamp((used / total) * 100) : null);
+const hm = (seconds) =>
+  Number.isFinite(seconds) && seconds > 0 ? `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m` : "—";
+const formatTimestamp = (value) => new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 const computeNodeMemoryPercent = (memory = {}) => {
   const total = toNumber(memory.total ?? memory.max);
@@ -77,135 +41,74 @@ const computeNodeMemoryPercent = (memory = {}) => {
   return null;
 };
 
-const computeMemoryPercent = (snapshot) => {
-  const memory = snapshot?.memory ?? {};
-  const raw = snapshot?.raw ?? {};
-  const max = toNumber(memory.max ?? raw.maxmem);
-  if (!max || max <= 0) return null;
-  const usedDirect = toNumber(memory.used ?? raw.mem);
-  if (Number.isFinite(usedDirect)) return clamp((usedDirect / max) * 100);
-  const free = toNumber(memory.free ?? raw.freemem);
-  if (Number.isFinite(free)) return clamp(((max - free) / max) * 100);
-  return null;
-};
-
-const formatTimestamp = (value) =>
-  new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-
-const gb = (value) => (Number.isFinite(value) ? `${(value / 1024 ** 3).toFixed(1)} GB` : "—");
-const pct = (value) => (Number.isFinite(value) ? `${value.toFixed(1)}%` : "—");
-const hm = (seconds) =>
-  Number.isFinite(seconds)
-    ? `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`
-    : "—";
-
-const transformSnapshots = (snapshots) => {
-  if (!Array.isArray(snapshots) || snapshots.length === 0) {
-    return { points: createEmptyPoints(), lastTimestamp: null };
-  }
-  const sorted = snapshots
+// CPU series of the polled guest, for the 3D bars.
+const cpuSeriesFromSnapshots = (snapshots) => {
+  const sorted = (Array.isArray(snapshots) ? snapshots : [])
     .filter((snap) => snap?.collectedAt)
-    .sort((a, b) => new Date(a.collectedAt) - new Date(b.collectedAt));
-  if (sorted.length === 0) return { points: createEmptyPoints(), lastTimestamp: null };
-
-  const time = [];
-  const cpu = [];
-  const netIn = [];
-  const netOut = [];
-  const diskRead = [];
-  const diskWrite = [];
-  let memPercent = 0;
-  let previous = null;
-
-  for (const snapshot of sorted) {
-    const timeStamp = new Date(snapshot.collectedAt);
-    time.push(formatTimestamp(timeStamp));
-
-    const cpuValue = Number.isFinite(snapshot?.cpuPercent)
-      ? clamp(snapshot.cpuPercent, 0, 100)
-      : cpu.length
-        ? cpu[cpu.length - 1]
-        : 0;
-    cpu.push(cpuValue);
-
-    const memoryPercent = computeMemoryPercent(snapshot);
-    if (memoryPercent !== null) memPercent = memoryPercent;
-
-    if (previous) {
-      const deltaSeconds = Math.max(
-        1,
-        (timeStamp.getTime() - new Date(previous.collectedAt).getTime()) / 1000,
-      );
-      netIn.push(bytesToKilobitsPerSecond(computeRateFromRaw(snapshot.raw?.netin, previous.raw?.netin, deltaSeconds)));
-      netOut.push(bytesToKilobitsPerSecond(computeRateFromRaw(snapshot.raw?.netout, previous.raw?.netout, deltaSeconds)));
-      diskRead.push(bytesToMegabytesPerSecond(computeRateFromRaw(snapshot.raw?.diskread, previous.raw?.diskread, deltaSeconds)));
-      diskWrite.push(bytesToMegabytesPerSecond(computeRateFromRaw(snapshot.raw?.diskwrite, previous.raw?.diskwrite, deltaSeconds)));
-    } else {
-      netIn.push(0);
-      netOut.push(0);
-      diskRead.push(0);
-      diskWrite.push(0);
-    }
-    previous = snapshot;
-  }
-
-  return {
-    points: {
-      time: padSeries(time, SAMPLE_SIZE, "--"),
-      cpu: padSeries(cpu, SAMPLE_SIZE, 0),
-      netIn: padSeries(netIn, SAMPLE_SIZE, 0),
-      netOut: padSeries(netOut, SAMPLE_SIZE, 0),
-      diskRead: padSeries(diskRead, SAMPLE_SIZE, 0),
-      diskWrite: padSeries(diskWrite, SAMPLE_SIZE, 0),
-      mem: memPercent,
-    },
-    lastTimestamp: sorted.at(-1).collectedAt,
-  };
+    .sort((a, b) => new Date(a.collectedAt) - new Date(b.collectedAt))
+    .map((snap) => (Number.isFinite(snap?.cpuPercent) ? clamp(snap.cpuPercent) : 0));
+  const padded = [...Array(Math.max(0, SAMPLE_SIZE - sorted.length)).fill(0), ...sorted.slice(-SAMPLE_SIZE)];
+  return { cpu: padded, last: sorted.length ? snapshots.at(-1)?.collectedAt ?? null : null };
 };
 
-const buildSamplePoint = (prev) => ({
-  time: [...prev.time.slice(1), formatTimestamp(Date.now())],
-  cpu: [...prev.cpu.slice(1), clamp((prev.cpu.at(-1) ?? 35) + (Math.random() * 18 - 9))],
-  mem: clamp((prev.mem ?? 42) + (Math.random() * 6 - 3)),
-  netIn: [...prev.netIn.slice(1), clamp((prev.netIn.at(-1) ?? 180) + (Math.random() * 90 - 45), 0, 1200)],
-  netOut: [...prev.netOut.slice(1), clamp((prev.netOut.at(-1) ?? 140) + (Math.random() * 70 - 35), 0, 1200)],
-  diskRead: [...prev.diskRead.slice(1), clamp((prev.diskRead.at(-1) ?? 0.25) + (Math.random() * 0.12 - 0.06), 0, 4)],
-  diskWrite: [...prev.diskWrite.slice(1), clamp((prev.diskWrite.at(-1) ?? 0.18) + (Math.random() * 0.1 - 0.05), 0, 4)],
-});
+const demoCpuStep = (prev) => [...prev.slice(1), clamp((prev.at(-1) ?? 35) + (Math.random() * 18 - 9))];
 
-const lineSeries = (ct, name, data, color, area = false) => ({
-  name,
-  type: "line",
-  ...ct.seriesStyle,
-  data,
-  showSymbol: false,
-  lineStyle: ct.line(color),
-  ...(area && ct.area(color) ? { areaStyle: ct.area(color) } : {}),
-});
+/** Small arc gauge on the theme. */
+function Gauge({ value, color }) {
+  const ref = useRef(null);
+  const chart = useRef(null);
+  const ct = useChartTheme();
 
-const timeAxis = (ct, data) => ({
-  type: "category",
-  data,
-  boundaryGap: false,
-  ...ct.axisStyle,
-  splitLine: { show: false },
-});
+  useEffect(() => {
+    if (!chart.current && ref.current) chart.current = echarts.init(ref.current);
+    const resize = () => chart.current?.resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
+
+  useEffect(() => {
+    chart.current?.setOption({
+      series: [
+        {
+          type: "gauge",
+          startAngle: 210,
+          endAngle: -30,
+          min: 0,
+          max: 100,
+          radius: "96%",
+          center: ["50%", "60%"],
+          progress: { show: true, width: 10, roundCap: ct.fx === "glass", itemStyle: { color } },
+          axisLine: { roundCap: ct.fx === "glass", lineStyle: { width: 10, color: [[1, ct.colors.lineSoft]] } },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          pointer: { show: false },
+          anchor: { show: false },
+          title: { show: false },
+          detail: {
+            valueAnimation: true,
+            formatter: (v) => (Number.isFinite(v) ? `${Math.round(v)}%` : "—"),
+            color: ct.colors.text,
+            fontFamily: ct.fonts.mono,
+            fontSize: 26,
+            fontWeight: 600,
+            offsetCenter: [0, "-8%"],
+          },
+          data: [{ value: Number.isFinite(value) ? Math.round(value) : 0 }],
+        },
+      ],
+    });
+  }, [value, color, ct]);
+
+  return <div ref={ref} className="gauge" />;
+}
 
 function DashboardPage() {
-  const cpuRef = useRef(null);
-  const memRef = useRef(null);
-  const netRef = useRef(null);
-  const diskRef = useRef(null);
-
-  const cpuChart = useRef(null);
-  const memChart = useRef(null);
-  const netChart = useRef(null);
-  const diskChart = useRef(null);
-
-  const [points, setPoints] = useState(createEmptyPoints);
+  const [cpuPoints, setCpuPoints] = useState(() => Array(SAMPLE_SIZE).fill(0));
   const [demoMode, setDemoMode] = useState(false);
   const [intervalMs, setIntervalMs] = useState(DEFAULT_INTERVAL);
   const [showThreeD, setShowThreeD] = useState(true);
+  const [range, setRange] = useState("hour");
   // ponytail: two layouts, css does the work. "grid" = dense Grafana-style, "stack" = one column.
   const [layout, setLayout] = useState(() => {
     try {
@@ -223,6 +126,7 @@ function DashboardPage() {
   const [selectedVmid, setSelectedVmid] = useState(PROXMOX_VMID);
   const { auth } = useAuth();
   const ct = useChartTheme();
+  const history = useHistory(selectedNode, range, demoMode);
 
   useEffect(() => {
     try {
@@ -236,107 +140,9 @@ function DashboardPage() {
   }, [layout]);
 
   useEffect(() => {
-    if (!cpuChart.current && cpuRef.current) cpuChart.current = echarts.init(cpuRef.current);
-    if (!memChart.current && memRef.current) memChart.current = echarts.init(memRef.current);
-    if (!netChart.current && netRef.current) netChart.current = echarts.init(netRef.current);
-    if (!diskChart.current && diskRef.current) diskChart.current = echarts.init(diskRef.current);
-
-    const resizeCharts = () => {
-      cpuChart.current?.resize();
-      memChart.current?.resize();
-      netChart.current?.resize();
-      diskChart.current?.resize();
-    };
-    window.addEventListener("resize", resizeCharts);
-    return () => window.removeEventListener("resize", resizeCharts);
-  }, []);
-
-  useEffect(() => {
-    cpuChart.current?.setOption({
-      grid: { left: 40, right: 12, top: 20, bottom: 28 },
-      tooltip: ct.tooltipStyle,
-      xAxis: timeAxis(ct, points.time),
-      yAxis: { type: "value", min: 0, max: 100, ...ct.axisStyle, axisLabel: { ...ct.axisStyle.axisLabel, formatter: "{value}%" } },
-      series: [lineSeries(ct, "CPU", points.cpu, ct.colors.accent, true)],
-    });
-  }, [ct, points.cpu, points.time]);
-
-  useEffect(() => {
-    memChart.current?.setOption({
-      series: [
-        {
-          type: "gauge",
-          startAngle: 210,
-          endAngle: -30,
-          min: 0,
-          max: 100,
-          radius: "92%",
-          center: ["50%", "58%"],
-          progress: { show: true, width: 10, roundCap: true, itemStyle: { color: ct.colors.live } },
-          axisLine: { roundCap: true, lineStyle: { width: 10, color: [[1, ct.colors.line]] } },
-          axisTick: { show: false },
-          splitLine: { show: false },
-          axisLabel: { show: false },
-          pointer: { show: false },
-          anchor: { show: false },
-          title: { show: false },
-          detail: {
-            valueAnimation: true,
-            formatter: "{value}%",
-            color: ct.colors.text,
-            fontFamily: ct.fonts.mono,
-            fontSize: 30,
-            fontWeight: 600,
-            offsetCenter: [0, "-5%"],
-          },
-          data: [{ value: Math.round(points.mem) }],
-        },
-      ],
-    });
-  }, [ct, points.mem]);
-
-  useEffect(() => {
-    netChart.current?.setOption({
-      grid: { left: 52, right: 12, top: 28, bottom: 28 },
-      tooltip: ct.tooltipStyle,
-      legend: { ...ct.legendStyle, data: ["Ingress", "Egress"] },
-      xAxis: timeAxis(ct, points.time),
-      yAxis: {
-        type: "value",
-        min: 0,
-        max: (value) => Math.max(10, (value.max || 0) * 1.25),
-        ...ct.axisStyle,
-        axisLabel: { ...ct.axisStyle.axisLabel, formatter: "{value} Kb/s" },
-      },
-      series: [lineSeries(ct, "Ingress", points.netIn, ct.colors.info), lineSeries(ct, "Egress", points.netOut, ct.colors.violet)],
-    });
-  }, [ct, points.netIn, points.netOut, points.time]);
-
-  useEffect(() => {
-    diskChart.current?.setOption({
-      grid: { left: 52, right: 12, top: 28, bottom: 28 },
-      tooltip: ct.tooltipStyle,
-      legend: { ...ct.legendStyle, data: ["Read", "Write"] },
-      xAxis: timeAxis(ct, points.time),
-      yAxis: {
-        type: "value",
-        min: 0,
-        max: (value) => Math.max(1, (value.max || 0) * 1.2),
-        ...ct.axisStyle,
-        axisLabel: { ...ct.axisStyle.axisLabel, formatter: "{value} MB/s" },
-      },
-      series: [lineSeries(ct, "Read", points.diskRead, ct.colors.live), lineSeries(ct, "Write", points.diskWrite, ct.colors.warn)],
-    });
-  }, [ct, points.diskRead, points.diskWrite, points.time]);
-
-  useEffect(() => {
     let aborted = false;
     const token = auth?.token;
-    if (!token) {
-      setAvailableNodes((prev) => (prev?.length ? prev : [PROXMOX_NODE]));
-      setSelectedNode((prev) => prev || PROXMOX_NODE);
-      return undefined;
-    }
+    if (!token) return undefined;
     const loadNodes = async () => {
       try {
         const response = await fetch(`${API_BASE}/api/proxmox/nodes`, {
@@ -392,19 +198,14 @@ function DashboardPage() {
 
         const nodeName = nodeData?.node ?? selectedNode;
         const snapshots = Array.isArray(snapResponse?.data) ? snapResponse.data : [];
-        if (snapshots.length === 0) {
-          setPoints(createEmptyPoints());
-          setLastUpdated(null);
-          setStatus({ type: "waiting", message: `Waiting for snapshots on ${nodeName}…` });
-          return;
-        }
-
-        const { points: nextPoints, lastTimestamp } = transformSnapshots(snapshots);
-        const hostMemPercent = computeNodeMemoryPercent(nodeData?.memory);
-        if (hostMemPercent !== null) nextPoints.mem = hostMemPercent;
-        setPoints(nextPoints);
-        setLastUpdated(lastTimestamp);
-        setStatus({ type: "live", message: nodeName });
+        const { cpu, last } = cpuSeriesFromSnapshots(snapshots);
+        setCpuPoints(cpu);
+        setLastUpdated(last);
+        setStatus(
+          snapshots.length === 0
+            ? { type: "waiting", message: `Live · no snapshots yet for VMID ${selectedVmid} on ${nodeName}` }
+            : { type: "live", message: nodeName },
+        );
       } catch (err) {
         if (cancelled) return;
         console.error("Failed to load Proxmox telemetry", err);
@@ -422,25 +223,22 @@ function DashboardPage() {
 
   useEffect(() => {
     if (!demoMode) return undefined;
-    const timer = setInterval(() => setPoints((prev) => buildSamplePoint(prev)), intervalMs);
+    const timer = setInterval(() => setCpuPoints(demoCpuStep), Math.min(intervalMs, 2000));
     return () => clearInterval(timer);
   }, [demoMode, intervalMs]);
 
-  const nodeCpuPercent = Number.isFinite(nodeSummary?.cpu) ? clamp(nodeSummary.cpu * 100, 0, 100) : null;
+  const nodeCpuPercent = Number.isFinite(nodeSummary?.cpu) ? clamp(nodeSummary.cpu * 100) : null;
   const nodeMemory = nodeSummary?.memory ?? {};
   const nodeMemPercent = computeNodeMemoryPercent(nodeMemory);
   const nodeMemUsed = toNumber(nodeMemory.used);
   const nodeMemTotal = toNumber(nodeMemory.total ?? nodeMemory.max);
   const nodeFsUsed = toNumber(nodeMemory.fs_used ?? nodeMemory.fsUsed);
   const nodeFsTotal = toNumber(nodeMemory.fs_total ?? nodeMemory.fsTotal);
-  const nodeFsPercent =
-    nodeFsTotal && nodeFsTotal > 0 && Number.isFinite(nodeFsUsed) ? clamp((nodeFsUsed / nodeFsTotal) * 100) : null;
+  const nodeFsPercent = ratio(nodeFsUsed, nodeFsTotal);
 
   const nodeLoadAverage = (() => {
     if (!nodeSummary?.loadAvg) return "—";
-    if (Array.isArray(nodeSummary.loadAvg)) {
-      return nodeSummary.loadAvg.map((value) => Number(value).toFixed(2)).join(" / ");
-    }
+    if (Array.isArray(nodeSummary.loadAvg)) return nodeSummary.loadAvg.map((value) => Number(value).toFixed(2)).join(" / ");
     const parts = String(nodeSummary.loadAvg).split(/\s+/).filter(Boolean).slice(0, 3);
     return parts.length ? parts.join(" / ") : "—";
   })();
@@ -451,69 +249,10 @@ function DashboardPage() {
     Number.isFinite(nodeSummary?.uptimeSeconds) && nodeSummary.uptimeSeconds > 0
       ? new Date(Date.now() - nodeSummary.uptimeSeconds * 1000).toLocaleString()
       : null;
-
-  const getLabelFromAxisValue = useCallback(
-    (axisValue) => {
-      if (typeof axisValue === "string") return axisValue;
-      if (typeof axisValue === "number" && points.time.length > 0) {
-        const index = Math.max(0, Math.min(points.time.length - 1, Math.round(axisValue)));
-        return points.time[index];
-      }
-      return null;
-    },
-    [points.time],
-  );
-
-  const hoverAt = useCallback(
-    (axisValue, build) => {
-      const label = getLabelFromAxisValue(axisValue);
-      if (!label) return null;
-      const index = points.time.lastIndexOf(label);
-      if (index === -1) return null;
-      const lines = build(index);
-      return lines ? { label, lines } : null;
-    },
-    [getLabelFromAxisValue, points.time],
-  );
-
-  const getCpuHoverData = useCallback(
-    (axisValue) =>
-      hoverAt(axisValue, (i) => {
-        const value = points.cpu[i];
-        return Number.isFinite(value) ? [{ name: "CPU", value: `${value.toFixed(1)}%` }] : null;
-      }),
-    [hoverAt, points.cpu],
-  );
-
-  const getNetworkHoverData = useCallback(
-    (axisValue) =>
-      hoverAt(axisValue, (i) => {
-        const a = points.netIn[i];
-        const b = points.netOut[i];
-        if (!Number.isFinite(a) && !Number.isFinite(b)) return null;
-        return [
-          { name: "Ingress", value: Number.isFinite(a) ? `${a.toFixed(1)} Kb/s` : "—" },
-          { name: "Egress", value: Number.isFinite(b) ? `${b.toFixed(1)} Kb/s` : "—" },
-        ];
-      }),
-    [hoverAt, points.netIn, points.netOut],
-  );
-
-  const getDiskHoverData = useCallback(
-    (axisValue) =>
-      hoverAt(axisValue, (i) => {
-        const a = points.diskRead[i];
-        const b = points.diskWrite[i];
-        if (!Number.isFinite(a) && !Number.isFinite(b)) return null;
-        return [
-          { name: "Read", value: Number.isFinite(a) ? `${a.toFixed(2)} MB/s` : "—" },
-          { name: "Write", value: Number.isFinite(b) ? `${b.toFixed(2)} MB/s` : "—" },
-        ];
-      }),
-    [hoverAt, points.diskRead, points.diskWrite],
-  );
-
   const nodeStatus = (nodeSummary?.status || "unknown").toLowerCase();
+  const sortedVms = [...vmList].sort((a, b) => Number(a.id) - Number(b.id));
+
+  const usageClass = (value) => (!Number.isFinite(value) ? "" : value >= 85 ? " is-hot" : value >= 65 ? " is-warm" : "");
 
   return (
     <div className="page dash" data-layout={layout}>
@@ -525,9 +264,7 @@ function DashboardPage() {
             <span className={`badge badge--${status.type}`}>{status.type}</span>
             <span className="muted">{status.message}</span>
             {status.type === "live" ? <span className="mono sensitive dash__updated">VMID {selectedVmid}</span> : null}
-            {status.type === "live" && lastUpdated ? (
-              <span className="mono dash__updated">updated {formatTimestamp(lastUpdated)}</span>
-            ) : null}
+            {status.type === "live" && lastUpdated ? <span className="mono dash__updated">updated {formatTimestamp(lastUpdated)}</span> : null}
           </p>
         </div>
 
@@ -548,6 +285,13 @@ function DashboardPage() {
             step={1000}
             onChange={(e) => setIntervalMs(Math.max(1000, Number(e.target.value) || DEFAULT_INTERVAL))}
           />
+          <div className="seg toolbar__seg" role="tablist" aria-label="History range">
+            {RANGES.map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={range === id} className={`seg__btn${range === id ? " is-active" : ""}`} onClick={() => setRange(id)}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="seg toolbar__seg" role="tablist" aria-label="Layout">
             {[
               ["grid", "Grid"],
@@ -576,7 +320,7 @@ function DashboardPage() {
           <div className="panel__head">
             <span className="panel__title">Node overview</span>
             <span className="panel__meta">
-              {runningVmCount} / {vmList.length} VMs running
+              {runningVmCount} / {vmList.length} guests running
             </span>
           </div>
           {nodeSummary ? (
@@ -622,11 +366,7 @@ function DashboardPage() {
               <div className="stat">
                 <span className="stat__label">
                   Load 1 / 5 / 15
-                  <span
-                    className="hint"
-                    tabIndex={0}
-                    data-tip="Runnable tasks averaged over 1, 5 and 15 minutes. Values near your core count mean saturation."
-                  >
+                  <span className="hint" tabIndex={0} data-tip="Runnable tasks averaged over 1, 5 and 15 minutes. Values near your core count mean saturation.">
                     ?
                   </span>
                 </span>
@@ -635,6 +375,60 @@ function DashboardPage() {
             </div>
           ) : (
             <p className="muted">Waiting for node metrics…</p>
+          )}
+        </section>
+
+        <section className="panel panel--guests">
+          <div className="panel__head">
+            <span className="panel__title">Resource allocation</span>
+            <span className="panel__meta">{sortedVms.length} guests on this node</span>
+          </div>
+          {sortedVms.length === 0 ? (
+            <p className="muted">No guests on this node.</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th className="num">vCPU</th>
+                    <th className="num">Memory</th>
+                    <th className="num">Mem %</th>
+                    <th className="num">Disk</th>
+                    <th className="num">Disk %</th>
+                    <th className="num">Uptime</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedVms.map((vm) => {
+                    const memPct = ratio(vm.mem, vm.maxMem);
+                    const diskPct = ratio(vm.disk, vm.maxDisk);
+                    const active = String(vm.id) === String(selectedVmid);
+                    return (
+                      <tr key={vm.id} className={active ? "is-active" : ""} onClick={() => setSelectedVmid(String(vm.id))}>
+                        <td className="mono sensitive">
+                          {vm.type === "lxc" ? "lxc" : "qemu"}/{vm.id}
+                        </td>
+                        <td className="table__name">{vm.name}</td>
+                        <td className="mono">{vm.type === "lxc" ? "lxc" : "vm"}</td>
+                        <td>
+                          <span className={`badge badge--${(vm.status || "unknown").toLowerCase()}`}>{vm.status ?? "unknown"}</span>
+                        </td>
+                        <td className="num mono">{Number.isFinite(vm.maxCpu) ? vm.maxCpu : "—"}</td>
+                        <td className="num mono">{gb(vm.maxMem)}</td>
+                        <td className={`num mono${usageClass(memPct)}`}>{pct(memPct)}</td>
+                        <td className="num mono">{gb(vm.maxDisk)}</td>
+                        <td className={`num mono${usageClass(diskPct)}`}>{pct(diskPct)}</td>
+                        <td className="num mono">{hm(vm.uptimeSeconds)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
@@ -650,134 +444,42 @@ function DashboardPage() {
           }}
         />
 
-        <History node={selectedNode} demo={demoMode} />
+        <History className="history--cpu" node={selectedNode} demo={demoMode} history={history} metric="cpu" timeframe={range} legend="table" title="Guests CPU usage" />
+        <History className="history--mem" node={selectedNode} demo={demoMode} history={history} metric="mem" timeframe={range} legend="table" title="Guests memory usage" />
+        <History className="history--disk" node={selectedNode} demo={demoMode} history={history} metric="disk" timeframe={range} legend="table" title="Guests disk I/O" />
+        <History className="history--net" node={selectedNode} demo={demoMode} history={history} metric="net" timeframe={range} legend="table" title="Guests network" />
 
-        <section className="panel panel--cpu">
+        <section className="panel panel--gauge">
           <div className="panel__head">
-            <span className="panel__title">CPU utilisation</span>
-            <span className="panel__meta">last {SAMPLE_SIZE} samples</span>
+            <span className="panel__title">Host CPU</span>
+            <span className="panel__meta">{Number.isFinite(nodeSummary?.maxCpu) ? `${nodeSummary.maxCpu} cores` : "now"}</span>
           </div>
-          <div className="chart-wrap">
-            <div ref={cpuRef} className="chart" />
-            <ChartLensOverlay chartDomRef={cpuRef} chartInstanceRef={cpuChart} getHoverData={getCpuHoverData} />
-          </div>
+          <Gauge value={nodeCpuPercent} color={ct.colors.accent} />
         </section>
 
-        <section className="panel panel--mem">
+        <section className="panel panel--gauge">
           <div className="panel__head">
-            <span className="panel__title">Memory</span>
-            <span className="panel__meta">host</span>
+            <span className="panel__title">Host memory</span>
+            <span className="panel__meta">
+              {gb(nodeMemUsed)} / {gb(nodeMemTotal)}
+            </span>
           </div>
-          <div ref={memRef} className="chart chart--gauge" />
-        </section>
-
-        <section className="panel panel--net">
-          <div className="panel__head">
-            <span className="panel__title">Network</span>
-            <span className="panel__meta">Kb/s</span>
-          </div>
-          <div className="chart-wrap">
-            <div ref={netRef} className="chart" />
-            <ChartLensOverlay chartDomRef={netRef} chartInstanceRef={netChart} getHoverData={getNetworkHoverData} />
-          </div>
-        </section>
-
-        <section className="panel panel--disk">
-          <div className="panel__head">
-            <span className="panel__title">Disk</span>
-            <span className="panel__meta">MB/s</span>
-          </div>
-          <div className="chart-wrap">
-            <div ref={diskRef} className="chart" />
-            <ChartLensOverlay chartDomRef={diskRef} chartInstanceRef={diskChart} getHoverData={getDiskHoverData} />
-          </div>
+          <Gauge value={nodeMemPercent} color={ct.colors.live} />
         </section>
 
         {showThreeD ? (
           <section className="panel panel--3d">
             <div className="panel__head">
               <span className="panel__title">CPU history · 3D</span>
-              <span className="panel__meta">drag to orbit</span>
+              <span className="panel__meta">
+                <span className="sensitive">VMID {selectedVmid}</span> · drag to orbit
+              </span>
             </div>
-            <ThreeMetricChart key={ct.colors.bgElev} data={points.cpu} color={ct.colors.accent} background={ct.colors.bgElev} gridColor={ct.colors.line} interactive />
+            <ThreeMetricChart key={ct.colors.bgElev} data={cpuPoints} color={ct.colors.accent} background={ct.colors.bgElev} gridColor={ct.colors.line} interactive />
           </section>
         ) : null}
       </div>
     </div>
-  );
-}
-
-function ChartLensOverlay({ chartDomRef, chartInstanceRef, getHoverData }) {
-  const svgRef = useRef(null);
-  const [tooltip, setTooltip] = useState({ visible: false, label: "", lines: [], x: 0, y: 0 });
-
-  useEffect(() => {
-    if (!chartDomRef.current || !svgRef.current) return undefined;
-
-    const svg = select(svgRef.current);
-    svg.selectAll("*").remove();
-    const line = svg.append("line").attr("class", "lens-line").style("opacity", 0);
-
-    const updateSize = () => {
-      const rect = chartDomRef.current?.getBoundingClientRect();
-      if (rect) svg.attr("width", rect.width).attr("height", rect.height);
-    };
-    updateSize();
-
-    let observer;
-    if (typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(updateSize);
-      observer.observe(chartDomRef.current);
-    } else {
-      window.addEventListener("resize", updateSize);
-    }
-
-    const handleMove = (event) => {
-      const chart = chartInstanceRef.current;
-      const rect = chartDomRef.current?.getBoundingClientRect();
-      if (!chart || !rect) return;
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      line.attr("x1", x).attr("x2", x).attr("y1", 0).attr("y2", rect.height).style("opacity", 1);
-      const converted = chart.convertFromPixel({ seriesIndex: 0 }, [x, y]);
-      const data = getHoverData(Array.isArray(converted) ? converted[0] : converted);
-      if (!data) {
-        setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
-        return;
-      }
-      setTooltip({ visible: true, label: data.label, lines: data.lines, x, y });
-    };
-
-    const handleLeave = () => {
-      line.style("opacity", 0);
-      setTooltip((prev) => (prev.visible ? { ...prev, visible: false } : prev));
-    };
-
-    const selection = select(chartDomRef.current);
-    selection.on("mousemove.lens", handleMove).on("mouseleave.lens", handleLeave);
-
-    return () => {
-      selection.on("mousemove.lens", null).on("mouseleave.lens", null);
-      if (observer) observer.disconnect();
-      else window.removeEventListener("resize", updateSize);
-    };
-  }, [chartDomRef, chartInstanceRef, getHoverData]);
-
-  return (
-    <>
-      <svg ref={svgRef} className="lens-svg" />
-      <div className={`lens-tip${tooltip.visible ? " is-visible" : ""}`} style={{ left: tooltip.x, top: tooltip.y }}>
-        <p>{tooltip.label}</p>
-        <ul>
-          {tooltip.lines.map((line) => (
-            <li key={line.name}>
-              <span>{line.name}</span>
-              <strong>{line.value}</strong>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </>
   );
 }
 

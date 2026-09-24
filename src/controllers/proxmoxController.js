@@ -206,6 +206,8 @@ function mapVmList(payload) {
     maxCpu: item?.maxcpu,
     mem: item?.mem,
     maxMem: item?.maxmem,
+    disk: item?.disk,
+    maxDisk: item?.maxdisk,
     uptimeSeconds: item?.uptime,
     pid: item?.pid,
     node: item?.node,
@@ -342,9 +344,11 @@ export const getHistory = async (req, res) => {
     const cacheKey = `${key}:${timeframe}:${req.user?.username ?? ""}`;
     const hit = historyCache.get(cacheKey);
     if (hit && Date.now() - hit.at < HISTORY_TTL_MS) {
-      res.json({ result: 200, data: hit.data, cached: true });
+      // Several panels ask at once; share one in-flight fan-out.
+      res.json({ result: 200, data: await hit.promise, cached: true });
       return;
     }
+    const promise = (async () => {
 
     const vms = mapVmList(await fetchNodeVms({ node: nodeName, nodeConfig }));
     const allowedVmIds = Array.isArray(req.user?.allowedVmIds) ? req.user.allowedVmIds : [];
@@ -358,14 +362,16 @@ export const getHistory = async (req, res) => {
       ),
     ]);
 
-    const data = {
+    return {
       node: key,
       timeframe,
       host: nodeSeries(hostRows),
       guests: visible.map((vm, i) => ({ id: vm.id, name: vm.name, type: vm.type, status: vm.status, ...guestSeries(guestRows[i]) })),
     };
-    historyCache.set(cacheKey, { at: Date.now(), data });
-    res.json({ result: 200, data });
+    })();
+    historyCache.set(cacheKey, { at: Date.now(), promise });
+    promise.catch(() => historyCache.delete(cacheKey));
+    res.json({ result: 200, data: await promise });
   } catch (err) {
     console.error("getHistory error", err);
     const { status, payload } = buildErrorResponse(err);

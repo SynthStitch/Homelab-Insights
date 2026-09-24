@@ -12,9 +12,13 @@
     "seed:load": "node scripts/simulate-load.js"
   },
   "dependencies": {
+    "@opentelemetry/auto-instrumentations-node": "^0.56.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.56.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.56.0",
+    "@opentelemetry/resources": "^1.26.0",
+    "@opentelemetry/sdk-node": "^0.56.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "d3": "^7.9.0",
     "dotenv": "^16.4.5",
     "echarts": "^6.0.0",
     "express": "^4.19.2",
@@ -28,12 +32,7 @@
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3",
     "three": "^0.180.0",
-    "twilio": "^5.10.6",
-    "@opentelemetry/sdk-node": "^0.56.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.56.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.56.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "^0.56.0",
-    "@opentelemetry/resources": "^1.26.0"
+    "twilio": "^5.10.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

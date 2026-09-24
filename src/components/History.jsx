@@ -4,14 +4,16 @@ import { fetchHistory } from "../services/proxmoxApiClient.js";
 import { useChartTheme } from "../context/ThemeContext.jsx";
 import "./History.css";
 
-const METRICS = [
+// eslint-disable-next-line react-refresh/only-export-components
+export const METRICS = [
   { id: "cpu", label: "CPU", unit: "%", max: 100 },
   { id: "mem", label: "Memory", unit: "%", max: 100 },
   { id: "disk", label: "Disk I/O", unit: "MB/s" },
   { id: "net", label: "Network", unit: "MB/s" },
 ];
 
-const RANGES = [
+// eslint-disable-next-line react-refresh/only-export-components
+export const RANGES = [
   ["hour", "1h"],
   ["day", "1d"],
   ["week", "1w"],
@@ -21,7 +23,7 @@ const RANGES = [
 
 const REFRESH_MS = 60_000;
 
-// Synthetic history so the panel has something to show in demo mode.
+// Synthetic history so panels have something to show in demo mode.
 function demoHistory(timeframe) {
   const n = 70;
   const step = { hour: 60e3, day: 20 * 60e3, week: 2 * 3600e3, month: 8 * 3600e3, year: 4 * 86400e3 }[timeframe] ?? 60e3;
@@ -47,15 +49,12 @@ function demoHistory(timeframe) {
   };
 }
 
-export default function History({ node, demo = false }) {
-  const chartRef = useRef(null);
-  const chart = useRef(null);
-  const [metric, setMetric] = useState("cpu");
-  const [timeframe, setTimeframe] = useState("hour");
+/** Fetches RRD history for a node. Pass the result to several <History> panels to share one request. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useHistory(node, timeframe, demo = false) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const ct = useChartTheme();
 
   useEffect(() => {
     if (demo) {
@@ -63,6 +62,7 @@ export default function History({ node, demo = false }) {
       setError("");
       return undefined;
     }
+    if (!node) return undefined;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
@@ -86,7 +86,69 @@ export default function History({ node, demo = false }) {
     };
   }, [node, timeframe, demo]);
 
+  return { data, error, loading };
+}
+
+const stats = (values) => {
+  const nums = values.filter((v) => Number.isFinite(v));
+  if (!nums.length) return { max: null, mean: null, last: null };
+  return {
+    max: Math.max(...nums),
+    mean: nums.reduce((a, b) => a + b, 0) / nums.length,
+    last: nums[nums.length - 1],
+  };
+};
+
+/**
+ * Multi-series history chart.
+ *  - metric: pin to one metric (hides the metric tabs)
+ *  - timeframe: controlled range (hides the range tabs)
+ *  - legend: "table" (Grafana-style max/mean/last beside the chart) or "bottom"
+ *  - history: a shared useHistory() result, so sibling panels don't refetch
+ */
+export default function History({
+  node,
+  demo = false,
+  metric: fixedMetric,
+  timeframe: fixedTimeframe,
+  legend = "bottom",
+  title,
+  className = "",
+  history,
+}) {
+  const chartRef = useRef(null);
+  const chart = useRef(null);
+  const [metricState, setMetric] = useState(fixedMetric ?? "cpu");
+  const [timeframeState, setTimeframe] = useState(fixedTimeframe ?? "hour");
+  const metric = fixedMetric ?? metricState;
+  const timeframe = fixedTimeframe ?? timeframeState;
+  const own = useHistory(history ? null : node, timeframe, history ? false : demo);
+  const { data, error, loading } = history ?? own;
+  const ct = useChartTheme();
+  const [hidden, setHidden] = useState(() => new Set());
+
   const metricDef = useMemo(() => METRICS.find((m) => m.id === metric) ?? METRICS[0], [metric]);
+
+  const rows = useMemo(() => {
+    if (!data) return [];
+    const list = [];
+    if (data.host?.[metric]?.some((v) => v !== null)) {
+      list.push({ key: "host", name: "host", color: ct.colors.text, dashed: true, series: data.host, ...stats(data.host[metric]) });
+    }
+    (data.guests ?? [])
+      .filter((g) => g[metric]?.some((v) => v !== null && v !== undefined))
+      .forEach((g, i) =>
+        list.push({
+          key: `${g.type}/${g.id}`,
+          name: g.name,
+          type: g.type,
+          color: ct.seriesPalette[i % ct.seriesPalette.length],
+          series: g,
+          ...stats(g[metric]),
+        }),
+      );
+    return list;
+  }, [data, metric, ct]);
 
   useEffect(() => {
     if (!chart.current && chartRef.current) chart.current = echarts.init(chartRef.current);
@@ -97,52 +159,40 @@ export default function History({ node, demo = false }) {
 
   useEffect(() => {
     if (!chart.current || !data) return;
-    const toPoints = (s) => s.t.map((ts, i) => [ts, s[metric][i]]);
-    const guests = (data.guests ?? []).filter((g) => g[metric]?.some((v) => v !== null && v !== undefined));
-    const series = guests.map((g, i) => ({
-      name: g.name,
-      type: "line",
-      showSymbol: false,
-      ...ct.seriesStyle,
-      connectNulls: false,
-      lineStyle: ct.line(ct.seriesPalette[i % ct.seriesPalette.length], 1.5),
-      itemStyle: { color: ct.seriesPalette[i % ct.seriesPalette.length] },
-      emphasis: { focus: "series", lineStyle: { width: 2.5 } },
-      data: toPoints(g),
-    }));
-    if (data.host && data.host[metric]?.some((v) => v !== null)) {
-      series.unshift({
-        name: "host",
+    const fmt = (v) => (v === null || v === undefined ? "—" : `${Number(v).toFixed(metricDef.unit === "%" ? 1 : 2)} ${metricDef.unit}`);
+    const series = rows
+      .filter((r) => !hidden.has(r.key))
+      .map((r) => ({
+        name: r.name,
         type: "line",
         showSymbol: false,
         ...ct.seriesStyle,
-        lineStyle: { ...ct.line(ct.colors.text, 2), type: "dashed" },
-        itemStyle: { color: ct.colors.text },
-        emphasis: { focus: "series" },
-        data: toPoints(data.host),
-      });
-    }
+        connectNulls: false,
+        lineStyle: { ...ct.line(r.color, r.dashed ? 2 : 1.5), ...(r.dashed ? { type: "dashed" } : {}) },
+        itemStyle: { color: r.color },
+        emphasis: { focus: "series", lineStyle: { width: 2.5 } },
+        data: r.series.t.map((ts, i) => [ts, r.series[metric][i]]),
+      }));
 
     chart.current.setOption(
       {
         animationDuration: 300,
-        grid: { left: 48, right: 16, top: 12, bottom: 56 },
-        tooltip: {
-          ...ct.tooltipStyle,
-          order: "valueDesc",
-          valueFormatter: (v) => (v === null || v === undefined ? "—" : `${Number(v).toFixed(metricDef.unit === "%" ? 1 : 2)} ${metricDef.unit}`),
-        },
-        legend: {
-          type: "scroll",
-          bottom: 0,
-          icon: "roundRect",
-          itemWidth: 10,
-          itemHeight: 3,
-          textStyle: { color: ct.colors.muted, fontFamily: ct.fonts.mono, fontSize: 10 },
-          pageTextStyle: { color: ct.colors.muted },
-          pageIconColor: ct.colors.muted,
-          pageIconInactiveColor: ct.colors.line,
-        },
+        grid: { left: 46, right: 12, top: 10, bottom: legend === "table" ? 24 : 52 },
+        tooltip: { ...ct.tooltipStyle, order: "valueDesc", valueFormatter: fmt },
+        legend:
+          legend === "table"
+            ? { show: false }
+            : {
+                type: "scroll",
+                bottom: 0,
+                icon: "roundRect",
+                itemWidth: 10,
+                itemHeight: 3,
+                textStyle: { color: ct.colors.muted, fontFamily: ct.fonts.mono, fontSize: 10 },
+                pageTextStyle: { color: ct.colors.muted },
+                pageIconColor: ct.colors.muted,
+                pageIconInactiveColor: ct.colors.line,
+              },
         xAxis: { type: "time", ...ct.axisStyle, splitLine: { show: false } },
         yAxis: {
           type: "value",
@@ -156,39 +206,87 @@ export default function History({ node, demo = false }) {
       },
       { notMerge: true },
     );
-  }, [data, metric, metricDef, ct]);
+  }, [data, rows, hidden, metric, metricDef, ct, legend]);
 
-  const guestCount = data?.guests?.length ?? 0;
+  const toggle = (key) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const solo = (key) => setHidden(new Set(rows.filter((r) => r.key !== key).map((r) => r.key)));
+
+  const fmtCell = (v) => (v === null ? "—" : metricDef.unit === "%" ? `${v.toFixed(1)}%` : v.toFixed(2));
 
   return (
-    <section className="panel history">
+    <section className={`panel history ${className}`.trim()}>
       <div className="panel__head">
-        <span className="panel__title">History</span>
+        <span className="panel__title">{title ?? `Guests ${metricDef.label.toLowerCase()}`}</span>
         <div className="history__controls">
-          <div className="seg" role="tablist" aria-label="Metric">
-            {METRICS.map((m) => (
-              <button key={m.id} type="button" role="tab" aria-selected={metric === m.id} className={`seg__btn${metric === m.id ? " is-active" : ""}`} onClick={() => setMetric(m.id)}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-          <div className="seg" role="tablist" aria-label="Range">
-            {RANGES.map(([id, label]) => (
-              <button key={id} type="button" role="tab" aria-selected={timeframe === id} className={`seg__btn${timeframe === id ? " is-active" : ""}`} onClick={() => setTimeframe(id)}>
-                {label}
-              </button>
-            ))}
-          </div>
+          {!fixedMetric ? (
+            <div className="seg" role="tablist" aria-label="Metric">
+              {METRICS.map((m) => (
+                <button key={m.id} type="button" role="tab" aria-selected={metric === m.id} className={`seg__btn${metric === m.id ? " is-active" : ""}`} onClick={() => setMetric(m.id)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {!fixedTimeframe ? (
+            <div className="seg" role="tablist" aria-label="Range">
+              {RANGES.map(([id, label]) => (
+                <button key={id} type="button" role="tab" aria-selected={timeframe === id} className={`seg__btn${timeframe === id ? " is-active" : ""}`} onClick={() => setTimeframe(id)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {loading ? <span className="panel__meta">refreshing…</span> : null}
+          {hidden.size ? (
+            <button type="button" className="btn btn--sm" onClick={() => setHidden(new Set())}>
+              Show all
+            </button>
+          ) : null}
         </div>
       </div>
-      <div className="history__meta">
-        <span className="panel__meta">
-          {guestCount} guests · host dashed · scroll to zoom · click legend to toggle
-        </span>
-        {loading ? <span className="panel__meta">refreshing…</span> : null}
-        {error ? <span className="status-text status-text--error">{error}</span> : null}
+
+      {error ? <p className="status-text status-text--error">{error}</p> : null}
+
+      <div className={`history__body${legend === "table" ? " history__body--table" : ""}`}>
+        <div ref={chartRef} className="history__chart" />
+        {legend === "table" ? (
+          <div className="legend">
+            <div className="legend__row legend__row--head">
+              <span>Name</span>
+              <span>Max</span>
+              <span>Mean</span>
+              <span>Last</span>
+            </div>
+            <div className="legend__scroll">
+              {rows.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  className={`legend__row${hidden.has(r.key) ? " is-hidden" : ""}`}
+                  onClick={(e) => (e.shiftKey ? solo(r.key) : toggle(r.key))}
+                  title="Click to hide, shift-click to solo"
+                >
+                  <span className="legend__name">
+                    <i style={{ background: r.color }} />
+                    {r.name}
+                    {r.type ? <small>{r.type === "lxc" ? "ct" : "vm"}</small> : null}
+                  </span>
+                  <span className="mono">{fmtCell(r.max)}</span>
+                  <span className="mono">{fmtCell(r.mean)}</span>
+                  <span className="mono legend__last">{fmtCell(r.last)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
-      <div ref={chartRef} className="history__chart" />
     </section>
   );
 }
