@@ -54,7 +54,9 @@
   gap: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  background: linear-gradient(180deg, rgba(20, 28, 49, 0.7), rgba(11, 16, 32, 0.9));
+  background: linear-gradient(180deg, rgba(20, 28, 49, 0.5), rgba(11, 16, 32, 0.72));
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
   box-shadow: var(--shadow);
   overflow: hidden;
 }

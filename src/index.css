@@ -63,24 +63,107 @@ body {
 
 body {
   min-width: 320px;
-  background: var(--bg);
+  background: transparent; /* :root paints the canvas; .atmo (z-index -1) must sit above body */
   overflow-x: hidden;
 }
 
-/* Atmosphere: faint grid + one warm glow. Fixed so every page shares it. */
-body::before {
-  content: "";
+/* ---------- atmosphere (see components/Atmosphere.jsx) ---------- */
+
+.atmo {
   position: fixed;
   inset: 0;
   z-index: -1;
+  overflow: hidden;
   pointer-events: none;
-  background:
-    radial-gradient(60vw 40vh at 8% -10%, rgba(250, 204, 21, 0.09), transparent 60%),
-    radial-gradient(50vw 50vh at 100% 110%, rgba(45, 212, 191, 0.07), transparent 60%),
-    linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
-  background-size: auto, auto, 28px 28px, 28px 28px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.55) 60%, rgba(0, 0, 0, 0.35));
+  background: var(--bg);
+}
+
+.atmo__bloom {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+}
+
+.atmo__bloom--cool {
+  width: 70vw;
+  height: 70vw;
+  left: 5vw;
+  top: 5vh;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.34), rgba(13, 148, 136, 0.18) 45%, transparent 70%);
+}
+
+.atmo__bloom--warm {
+  width: 60vw;
+  height: 60vw;
+  right: -18vw;
+  bottom: -22vh;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.28), rgba(217, 119, 6, 0.16) 40%, transparent 68%);
+}
+
+.atmo__shards {
+  position: absolute;
+  inset: 0;
+}
+
+.atmo__shards i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+  opacity: var(--o);
+  border: 1px solid rgba(214, 232, 255, 0.5);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.34), rgba(214, 232, 255, 0.08) 60%, rgba(255, 255, 255, 0.2));
+  box-shadow: 0 0 40px rgba(180, 210, 255, 0.18);
+  filter: blur(var(--b));
+  mix-blend-mode: screen;
+  transform: rotate(var(--r));
+  animation: shard-drift 26s ease-in-out infinite alternate;
+  animation-delay: var(--d);
+}
+
+@keyframes shard-drift {
+  from {
+    transform: rotate(var(--r)) translate3d(0, 0, 0);
+  }
+  to {
+    transform: rotate(calc(var(--r) + 3deg)) translate3d(40px, -28px, 0);
+  }
+}
+
+.atmo__grid {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><path d='M90 78v24M78 90h24' stroke='rgba(226,232,240,0.22)' stroke-width='1'/></svg>");
+  background-size: 180px 180px;
+  background-position: center;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.4));
+}
+
+.atmo__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.atmo__scan {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08) 50%, transparent);
+  animation: scan 11s linear infinite;
+}
+
+@keyframes scan {
+  from {
+    top: -2px;
+  }
+  to {
+    top: 100%;
+  }
 }
 
 a {
@@ -178,13 +261,25 @@ p {
 
 .panel {
   position: relative;
-  background: linear-gradient(180deg, rgba(20, 28, 49, 0.55), rgba(15, 21, 38, 0.85));
+  background: linear-gradient(180deg, rgba(20, 28, 49, 0.42), rgba(11, 16, 32, 0.66));
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   padding: 1.1rem 1.25rem 1.25rem;
   display: grid;
   gap: 0.9rem;
   align-content: start;
+}
+
+/* glass sheen along the top edge */
+.panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 22%);
+  pointer-events: none;
 }
 
 .panel__head {
@@ -231,7 +326,7 @@ p {
   padding: 0.85rem 0.95rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(7, 11, 20, 0.55);
+  background: rgba(7, 11, 20, 0.45);
 }
 
 .stat__label {

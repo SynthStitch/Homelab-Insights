@@ -10,6 +10,7 @@ import ContactPage from "./pages/ContactPage";
 import RequireAuth from "./components/RequireAuth.jsx";
 import AssistantChat from "./components/AssistantChat.jsx";
 import Navbar from "./components/Navbar.jsx";
+import Atmosphere from "./components/Atmosphere.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import "./App.css";
 
@@ -30,6 +31,7 @@ function AppShell() {
 
   return (
     <div className="app-shell">
+      <Atmosphere />
       <Navbar
         items={navItems}
         isAuthed={Boolean(auth?.token)}
