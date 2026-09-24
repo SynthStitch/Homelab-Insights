@@ -53,13 +53,9 @@ export async function createNode(req, res) {
     return res.status(400).json({ error: error.message });
   }
 
-  const existing = await ProxmoxNode.findOne({
-    $or: [{ name: value.name }, { node: value.node }],
-  }).lean();
+  const existing = await ProxmoxNode.findOne({ name: value.name }).lean();
   if (existing) {
-    return res
-      .status(409)
-      .json({ error: "A node with this name or node identifier already exists." });
+    return res.status(409).json({ error: "A node with this display name already exists." });
   }
 
   try {

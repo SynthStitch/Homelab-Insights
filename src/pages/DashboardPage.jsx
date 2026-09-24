@@ -333,8 +333,9 @@ function DashboardPage() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         if (aborted) return;
-        const nodes = Array.isArray(data?.nodes) ? data.nodes.map((n) => n?.node).filter(Boolean) : [];
-        const unique = Array.from(new Set([PROXMOX_NODE, ...nodes]));
+        const nodes = Array.isArray(data?.nodes) ? data.nodes.map((n) => n?.name ?? n?.node).filter(Boolean) : [];
+        // Saved nodes replace the env fallback (the poller does the same).
+        const unique = nodes.length ? Array.from(new Set(nodes)) : [PROXMOX_NODE];
         setAvailableNodes(unique);
         if (!unique.includes(selectedNode)) setSelectedNode(unique[0] || PROXMOX_NODE);
       } catch {

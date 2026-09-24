@@ -27,7 +27,7 @@ const ProxmoxNodeSchema = new Schema(
   }
 );
 
-ProxmoxNodeSchema.index({ node: 1 }, { unique: true });
+// ponytail: `name` is the unique key; `node` may repeat (every fresh install is called "pve")
 
 export const ProxmoxNode =
   mongoose.models.ProxmoxNode || mongoose.model("ProxmoxNode", ProxmoxNodeSchema);

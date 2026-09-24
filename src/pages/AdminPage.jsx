@@ -465,13 +465,22 @@ function AdminPage() {
           <span className="panel__meta">test before save</span>
         </div>
         <form className="form-grid" onSubmit={submitNode}>
-          <Field label="Display name" name="name" value={nodeForm.name} onChange={handleNodeChange} required />
+          <Field
+            label="Display name"
+            name="name"
+            value={nodeForm.name}
+            onChange={handleNodeChange}
+            placeholder="pve-1"
+            help="Unique. This is what the dashboard shows."
+            required
+          />
           <Field
             label="Node identifier"
             name="node"
             value={nodeForm.node}
             onChange={handleNodeChange}
             placeholder="pve"
+            help="The Proxmox node name. Several hosts can share it."
             required
           />
           <Field

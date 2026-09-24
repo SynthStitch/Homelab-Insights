@@ -25,12 +25,23 @@ function buildErrorResponse(err) {
   return { status, payload };
 }
 
+/**
+ * The UI addresses hosts by the saved node's display name (unique), falling back to the
+ * env default. The Proxmox node identifier is only used for API paths, since every
+ * fresh install is called "pve" and two of them must coexist.
+ */
+async function resolveTarget(key) {
+  const wanted = key ?? config.proxmox.defaultNode ?? undefined;
+  if (!wanted) return { key: wanted, node: wanted, nodeConfig: null };
+  const nodeConfig =
+    (await ProxmoxNode.findOne({ name: wanted }).lean().exec()) ??
+    (await ProxmoxNode.findOne({ node: wanted }).lean().exec());
+  return { key: nodeConfig?.name ?? wanted, node: nodeConfig?.node ?? wanted, nodeConfig };
+}
+
 export const getVmStatus = async (req, res) => {
   try {
-    const nodeName = req.query.node ?? config.proxmox.defaultNode ?? undefined;
-    const nodeConfig = nodeName
-      ? await ProxmoxNode.findOne({ node: nodeName }).lean().exec()
-      : null;
+    const { node: nodeName, nodeConfig } = await resolveTarget(req.query.node);
     const data = await fetchVmStatus({
       node: nodeName,
       vmid: req.query.vmid,
@@ -165,15 +176,13 @@ function mapNodeSummary(payload) {
 
 export const getNodeSummary = async (req, res) => {
   try {
-    const nodeName = req.query.node ?? config.proxmox.defaultNode ?? undefined;
-    const nodeConfig = nodeName
-      ? await ProxmoxNode.findOne({ node: nodeName }).lean().exec()
-      : null;
+    const { key, node: nodeName, nodeConfig } = await resolveTarget(req.query.node);
     const payload = await fetchNodeStatus({
       node: nodeName,
       nodeConfig,
     });
     const data = mapNodeSummary(payload);
+    if (data) data.node = key;
     res.status(200);
     res.json({ result: 200, data });
   } catch (err) {
@@ -223,15 +232,12 @@ function summarizeSnapshot(doc) {
 
 export const listNodeVms = async (req, res) => {
   try {
-    const nodeName = req.query.node ?? config.proxmox.defaultNode ?? undefined;
-    const nodeConfig = nodeName
-      ? await ProxmoxNode.findOne({ node: nodeName }).lean().exec()
-      : null;
+    const { key, node: nodeName, nodeConfig } = await resolveTarget(req.query.node);
     const payload = await fetchNodeVms({
       node: nodeName,
       nodeConfig,
     });
-    const vms = mapVmList(payload);
+    const vms = mapVmList(payload).map((vm) => ({ ...vm, node: key }));
 
     // Enforce per-user VM allowlist (unless "*" or empty)
     const allowedVmIds = Array.isArray(req.user?.allowedVmIds) ? req.user.allowedVmIds : [];
@@ -246,8 +252,8 @@ export const listNodeVms = async (req, res) => {
       const query = {
         vmid: { $in: vmIds },
       };
-      if (nodeName) {
-        query.node = nodeName;
+      if (key) {
+        query.node = key;
       }
       const snapshots = await ProxmoxSnapshot.find(query)
         .sort({ collectedAt: -1 })

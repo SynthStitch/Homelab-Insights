@@ -57,7 +57,7 @@ export default function Fleet({ nodes = [], selectedNode, selectedVmid, onSelect
       const results = await Promise.all(
         nodes.map((node) =>
           fetchNodeVms({ node })
-            .then((res) => (Array.isArray(res?.data) ? res.data : []).map((vm) => ({ ...vm, node: vm.node || node })))
+            .then((res) => (Array.isArray(res?.data) ? res.data : []).map((vm) => ({ ...vm, node })))
             .catch(() => []),
         ),
       );

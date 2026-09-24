@@ -31,6 +31,7 @@ export async function collectSnapshotOnce({
   vmid = config.proxmox.defaultVmid,
   type = "qemu",
   nodeConfig = null,
+  key = null, // UI key (saved node display name); snapshots are stored under it
 } = {}) {
   if (!node || !vmid) {
     throw new Error("collectSnapshotOnce requires node and vmid to be configured.");
@@ -39,7 +40,7 @@ export async function collectSnapshotOnce({
   const metrics = extractMetrics(payload?.data ?? payload);
 
   await ProxmoxSnapshot.create({
-    node,
+    node: key ?? node,
     vmid,
     status: metrics.status,
     cpuPercent: metrics.cpuPercent,
@@ -80,6 +81,7 @@ export function startProxmoxPolling({ intervalMs = config.proxmox.pollIntervalMs
       await Promise.all(
         targets
           .map((t) => ({
+            key: t.name || t.node || config.proxmox.defaultNode,
             node: t.node || config.proxmox.defaultNode,
             vmid: t.defaultVmid || config.proxmox.defaultVmid,
             nodeConfig: t,

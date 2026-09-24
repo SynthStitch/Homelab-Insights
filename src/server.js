@@ -13,6 +13,7 @@ import { authenticate, adminOnly } from "./middlewares/auth.js";
 import { config } from "./config.js";
 import { connectMongo } from "./db/mongo.js";
 import { startProxmoxPolling } from "./services/proxmoxPoller.js";
+import { ProxmoxNode } from "./models/index.js";
 
 const app = express();
 
@@ -48,6 +49,7 @@ const port = Number(process.env.PORT) || 8080;
 async function bootstrapInfrastructure() {
   try {
     await connectMongo();
+    await ProxmoxNode.syncIndexes(); // removes the old unique index on `node`
     startProxmoxPolling();
   } catch (err) {
     console.error("Failed to initialize infrastructure", err);
