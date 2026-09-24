@@ -21,7 +21,7 @@ const PROXMOX_VMID =
 const API_BASE =
   typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE
     ? import.meta.env.VITE_API_BASE.replace(/\/$/, "")
-    : "http://localhost:4100";
+    : ""; // ponytail: same-origin in prod; set VITE_API_BASE only for split dev servers
 
 const palette = {
   blue: "#60a5fa",

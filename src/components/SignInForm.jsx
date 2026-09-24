@@ -6,7 +6,7 @@ import GlowInput from "./ui/GlowInput.jsx";
 const API_BASE =
   typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE
     ? import.meta.env.VITE_API_BASE.replace(/\/$/, "")
-    : "http://localhost:4100";
+    : ""; // ponytail: same-origin in prod; set VITE_API_BASE only for split dev servers
 
 function SignInForm() {
   const [form, setForm] = useState({ identifier: "", password: "" });
