@@ -17,7 +17,8 @@
   overflow: hidden;
 }
 
-.sign-in-background {
+/* ponytail: two-class selector so it beats Tailwind CDN utilities regardless of stylesheet order */
+.sign-in-wrapper > .sign-in-background {
   position: absolute;
   inset: 0;
   border-radius: 0;
