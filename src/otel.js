@@ -9,7 +9,6 @@ import { Resource } from "@opentelemetry/resources";
 // If this module ever executes outside Node (e.g., mis-imported on the client),
 // bail out to avoid "process is undefined" errors.
 if (typeof process === "undefined") {
-  // eslint-disable-next-line no-console
   console.warn("OpenTelemetry SDK not started: process is undefined (likely client-side)");
 } else {
   const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318";
@@ -39,15 +38,13 @@ if (typeof process === "undefined") {
   if (start && typeof start.then === "function") {
     start
       .then(() => {
-        // eslint-disable-next-line no-console
-        console.log("OpenTelemetry SDK started");
+              console.log("OpenTelemetry SDK started");
       })
       .catch((err) => {
         console.error("Failed to start OpenTelemetry SDK", err);
       });
   } else {
-    // eslint-disable-next-line no-console
-    console.warn("OpenTelemetry SDK not started: start() unavailable");
+      console.warn("OpenTelemetry SDK not started: start() unavailable");
   }
 
   process.on("SIGTERM", () => {

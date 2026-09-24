@@ -171,6 +171,7 @@ function ThreeMetricChart({ data = [], color = "#facc15", background = "#0b1020"
       scene.clear();
       chartRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyHover = useCallback((index) => {
