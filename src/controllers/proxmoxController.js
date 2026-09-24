@@ -3,6 +3,7 @@ import {
   fetchRaw,
   fetchNodeStatus,
   fetchNodeVms,
+  fetchRrd,
 } from "../services/proxmoxClient.js";
 import { ProxmoxSnapshot, ProxmoxNode } from "../models/index.js";
 import { config } from "../config.js";
@@ -281,6 +282,92 @@ export const listNodeVms = async (req, res) => {
     res.json({ result: 200, data: enriched });
   } catch (err) {
     console.error("listNodeVms error", err);
+    const { status, payload } = buildErrorResponse(err);
+    res.status(status);
+    res.json(payload);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// History: Grafana-style multi-series from Proxmox's own RRD store.
+// ponytail: 30s in-memory cache; per-node fan-out is ~1 request per guest.
+// ---------------------------------------------------------------------------
+
+const TIMEFRAMES = new Set(["hour", "day", "week", "month", "year"]);
+const historyCache = new Map();
+const HISTORY_TTL_MS = 30_000;
+
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+const pct = (a, b) => (num(a) !== null && num(b) > 0 ? Math.round((a / b) * 1000) / 10 : null);
+const mbps = (a, b) => (num(a) !== null || num(b) !== null ? Math.round((((a ?? 0) + (b ?? 0)) / 1024 ** 2) * 100) / 100 : null);
+
+function guestSeries(rows) {
+  const t = [];
+  const cpu = [];
+  const mem = [];
+  const disk = [];
+  const net = [];
+  for (const r of rows) {
+    if (!r?.time) continue;
+    t.push(r.time * 1000);
+    cpu.push(num(r.cpu) === null ? null : Math.round(r.cpu * 1000) / 10);
+    mem.push(pct(r.mem, r.maxmem));
+    disk.push(mbps(r.diskread, r.diskwrite));
+    net.push(mbps(r.netin, r.netout));
+  }
+  return { t, cpu, mem, disk, net };
+}
+
+function nodeSeries(rows) {
+  const t = [];
+  const cpu = [];
+  const mem = [];
+  const disk = [];
+  const net = [];
+  for (const r of rows) {
+    if (!r?.time) continue;
+    t.push(r.time * 1000);
+    cpu.push(num(r.cpu) === null ? null : Math.round(r.cpu * 1000) / 10);
+    mem.push(pct(r.memused, r.memtotal));
+    disk.push(null); // node rrd has no disk throughput; only root fs usage
+    net.push(mbps(r.netin, r.netout));
+  }
+  return { t, cpu, mem, disk, net };
+}
+
+export const getHistory = async (req, res) => {
+  try {
+    const timeframe = TIMEFRAMES.has(req.query.timeframe) ? req.query.timeframe : "hour";
+    const { key, node: nodeName, nodeConfig } = await resolveTarget(req.query.node);
+    const cacheKey = `${key}:${timeframe}:${req.user?.username ?? ""}`;
+    const hit = historyCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < HISTORY_TTL_MS) {
+      res.json({ result: 200, data: hit.data, cached: true });
+      return;
+    }
+
+    const vms = mapVmList(await fetchNodeVms({ node: nodeName, nodeConfig }));
+    const allowedVmIds = Array.isArray(req.user?.allowedVmIds) ? req.user.allowedVmIds : [];
+    const allowAll = allowedVmIds.length === 0 || allowedVmIds.includes("*");
+    const visible = (allowAll ? vms : vms.filter((vm) => allowedVmIds.includes(String(vm.id)))).filter((vm) => !vm.template);
+
+    const [hostRows, ...guestRows] = await Promise.all([
+      fetchRrd({ node: nodeName, timeframe, nodeConfig }).catch(() => []),
+      ...visible.map((vm) =>
+        fetchRrd({ node: nodeName, type: vm.type, vmid: vm.id, timeframe, nodeConfig }).catch(() => []),
+      ),
+    ]);
+
+    const data = {
+      node: key,
+      timeframe,
+      host: nodeSeries(hostRows),
+      guests: visible.map((vm, i) => ({ id: vm.id, name: vm.name, type: vm.type, status: vm.status, ...guestSeries(guestRows[i]) })),
+    };
+    historyCache.set(cacheKey, { at: Date.now(), data });
+    res.json({ result: 200, data });
+  } catch (err) {
+    console.error("getHistory error", err);
     const { status, payload } = buildErrorResponse(err);
     res.status(status);
     res.json(payload);

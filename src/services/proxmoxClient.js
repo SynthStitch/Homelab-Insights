@@ -139,6 +139,18 @@ export async function fetchVmStatus({ node, vmid, type = "qemu", signal, nodeCon
   return proxmoxGet(endpoint, { signal, node: resolvedNode, nodeConfig });
 }
 
+/** Proxmox RRD history. Omit type/vmid for the node itself. timeframe: hour|day|week|month|year */
+export async function fetchRrd({ node, type, vmid, timeframe = "hour", signal, nodeConfig } = {}) {
+  const base = `/nodes/${encodeURIComponent(node)}`;
+  const target = vmid ? `${base}/${type === "lxc" ? "lxc" : "qemu"}/${encodeURIComponent(vmid)}` : base;
+  const payload = await proxmoxGet(`${target}/rrddata?timeframe=${encodeURIComponent(timeframe)}&cf=AVERAGE`, {
+    signal,
+    node,
+    nodeConfig,
+  });
+  return Array.isArray(payload?.data) ? payload.data : [];
+}
+
 export async function fetchRaw(path, { signal } = {}) {
   return proxmoxGet(path, { signal });
 }

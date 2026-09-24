@@ -6,6 +6,7 @@ import {
   listSnapshots,
   getNodeSummary,
   listNodeVms,
+  getHistory,
 } from "../controllers/proxmoxController.js";
 import {
   testNodeConnection,
@@ -26,6 +27,8 @@ router.get("/snapshots", authenticate, listSnapshots);
 router.get("/node-summary", authenticate, getNodeSummary);
 // VM listing should be auth-protected so we can enforce per-user allowlists
 router.get("/vms", authenticate, listNodeVms);
+// RRD history for the node and every visible guest: ?node=<key>&timeframe=hour|day|week|month|year
+router.get("/history", authenticate, getHistory);
 
 // Admin-only node management/testing endpoints
 // http://localhost:4100/api/proxmox/nodes/test  (POST) - test a node connection before saving

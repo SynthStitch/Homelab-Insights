@@ -16,6 +16,12 @@ export const colors = {
   danger: "#fb7185",
 };
 
+// Distinct hues for many-series charts; host line uses colors.text.
+export const seriesPalette = [
+  "#facc15", "#2dd4bf", "#60a5fa", "#a78bfa", "#fb923c", "#fb7185",
+  "#4ade80", "#f472b6", "#38bdf8", "#e879f9", "#fbbf24", "#34d399",
+];
+
 export const fonts = {
   mono: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
 };

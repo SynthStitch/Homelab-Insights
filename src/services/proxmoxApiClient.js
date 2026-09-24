@@ -62,3 +62,7 @@ export function fetchNodeSummary({ node } = {}) {
 export function fetchNodeVms({ node } = {}) {
   return fetchJson("/api/proxmox/vms", { node });
 }
+
+export function fetchHistory({ node, timeframe } = {}) {
+  return fetchJson("/api/proxmox/history", { node, timeframe });
+}

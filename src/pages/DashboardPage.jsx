@@ -4,6 +4,7 @@ import { select } from "d3-selection";
 import ThreeMetricChart from "../components/ThreeMetricChart.jsx";
 import Field from "../components/Field.jsx";
 import Fleet from "../components/Fleet.jsx";
+import History from "../components/History.jsx";
 import { fetchSnapshots, fetchNodeSummary, fetchNodeVms } from "../services/proxmoxApiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { colors, axisStyle, legendStyle, tooltipStyle, fonts } from "../lib/theme.js";
@@ -626,6 +627,8 @@ function DashboardPage() {
             setSelectedVmid(vmid);
           }}
         />
+
+        <History node={selectedNode} demo={demoMode} />
 
         <section className="panel span-8">
           <div className="panel__head">
